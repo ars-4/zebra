@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font-sans: 'Instrument Sans', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+
+  /* sidebar */
+  --sb-w: 240px;
+  --sb-collapsed: 56px;
+
+  /* radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* transitions */
+  --t: 180ms ease;
+}
+
+[data-theme="dark"] {
+  --bg-base:    #0e0e10;
+  --bg-surface: #161618;
+  --bg-raised:  #1e1e22;
+  --bg-hover:   #26262c;
+  --bg-active:  #2e2e36;
+  --bg-input:   #1a1a1e;
+
+  --border:       rgba(255,255,255,0.08);
+  --border-focus: rgba(255,255,255,0.22);
+
+  --text-primary:   #f0f0f2;
+  --text-secondary: #8a8a96;
+  --text-muted:     #55555e;
+
+  --accent:       #7c6af7;
+  --accent-dim:   rgba(124,106,247,0.15);
+  --accent-hover: #9182f9;
+
+  --tool-bg:     #1c1c20;
+  --tool-border: rgba(255,255,255,0.06);
+  --tool-text:   #6e6e7a;
+
+  --code-bg:  #13131600;
+  --success:  #3ecf8e;
+  --warning:  #f0a52a;
+  --danger:   #e85d5d;
+
+  --scrollbar: rgba(255,255,255,0.08);
+}
+
+[data-theme="light"] {
+  --bg-base:    #f6f6f8;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f0f0f4;
+  --bg-hover:   #ebebf0;
+  --bg-active:  #e2e2ea;
+  --bg-input:   #ffffff;
+
+  --border:       rgba(0,0,0,0.09);
+  --border-focus: rgba(0,0,0,0.22);
+
+  --text-primary:   #18181c;
+  --text-secondary: #5a5a6a;
+  --text-muted:     #9a9aaa;
+
+  --accent:       #6254e8;
+  --accent-dim:   rgba(98,84,232,0.1);
+  --accent-hover: #7364f0;
+
+  --tool-bg:     #f2f2f6;
+  --tool-border: rgba(0,0,0,0.06);
+  --tool-text:   #8a8a98;
+
+  --code-bg:  #f0f0f4;
+  --success:  #2ea96a;
+  --warning:  #d48e1a;
+  --danger:   #c94242;
+
+  --scrollbar: rgba(0,0,0,0.12);
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 99px; }
+
+/* ── Base Layout ──────────────────────────────────────────────────── */
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  display: flex;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sb-w);
+  min-width: var(--sb-w);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--t), min-width var(--t);
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+#sidebar.collapsed { width: var(--sb-collapsed); min-width: var(--sb-collapsed); }
+
+.sb-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sb-logo {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px; font-weight: 600; color: #fff;
+}
+.sb-title {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden;
+  transition: opacity var(--t);
+  color: var(--text-primary);
+}
+#sidebar.collapsed .sb-title { opacity: 0; pointer-events: none; }
+
+.sb-toggle {
+  margin-left: auto; flex-shrink: 0;
+  width: 28px; height: 28px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-secondary); border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t);
+}
+.sb-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sb-toggle svg { transition: transform 300ms ease; }
+#sidebar.collapsed .sb-toggle svg { transform: rotate(180deg); }
+
+/* new chat button */
+.new-chat-btn {
+  margin: 12px 10px 8px;
+  padding: 8px 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: var(--r-md);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: background var(--t), border-color var(--t);
+  white-space: nowrap; overflow: hidden;
+  flex-shrink: 0;
+}
+.new-chat-btn:hover { background: rgba(124,106,247,0.22); border-color: rgba(124,106,247,0.4); }
+.new-chat-btn span { transition: opacity var(--t); }
+#sidebar.collapsed .new-chat-btn span { opacity: 0; }
+#sidebar.collapsed .new-chat-btn { justify-content: center; padding: 8px; }
+
+/* chat history list */
+.sb-section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 14px;
+  margin-top: 4px; margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden;
+  transition: opacity var(--t);
+  flex-shrink: 0;
+}
+#sidebar.collapsed .sb-section-label { opacity: 0; }
+
+.chat-list {
+  flex: 1; overflow-y: auto;
+  padding: 0 6px;
+}
+.chat-item {
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 9px;
+  transition: background var(--t);
+  white-space: nowrap; overflow: hidden;
+}
+.chat-item:hover { background: var(--bg-hover); }
+.chat-item.active { background: var(--bg-active); }
+.chat-item-icon { flex-shrink: 0; color: var(--text-muted); }
+.chat-item-text {
+  font-size: 13px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis;
+  transition: opacity var(--t);
+}
+.chat-item.active .chat-item-text { color: var(--text-primary); }
+#sidebar.collapsed .chat-item-text { opacity: 0; }
+
+/* sidebar nav bottom */
+.sb-nav {
+  border-top: 1px solid var(--border);
+  padding: 8px 6px;
+  flex-shrink: 0;
+}
+.sb-nav-item {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  transition: background var(--t);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap; overflow: hidden;
+}
+.sb-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sb-nav-item.active { background: var(--bg-active); color: var(--text-primary); }
+.sb-nav-item svg { flex-shrink: 0; }
+.sb-nav-label { transition: opacity var(--t); }
+#sidebar.collapsed .sb-nav-label { opacity: 0; }
+
+/* ── Main Area ────────────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* topbar */
+.topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+.topbar-title {
+  font-size: 14px; font-weight: 500;
+  color: var(--text-primary);
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* model selector */
+.model-select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+}
+.model-select:focus { border-color: var(--border-focus); }
+
+/* tool badge */
+.tool-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px 10px;
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--t);
+}
+.tool-badge:hover { background: var(--bg-hover); }
+.tool-badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+/* theme toggle */
+.theme-toggle {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-raised);
+  cursor: pointer; color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t);
+}
+.theme-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ── Chat Area ────────────────────────────────────────────────────── */
+#chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 0;
+}
+.chat-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* empty state */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+  min-height: 300px;
+}
+.empty-logo {
+  width: 56px; height: 56px;
+  background: var(--accent-dim);
+  border-radius: var(--r-lg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: var(--accent);
+  border: 1px solid rgba(124,106,247,0.2);
+}
+.empty-state h2 { font-size: 18px; font-weight: 500; color: var(--text-secondary); }
+.empty-state p { font-size: 13px; max-width: 300px; line-height: 1.6; }
+.empty-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+.chip {
+  padding: 7px 14px; border-radius: 99px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; transition: background var(--t), border-color var(--t);
+}
+.chip:hover { background: var(--bg-hover); border-color: var(--border-focus); color: var(--text-primary); }
+
+/* messages */
+.msg { display: flex; flex-direction: column; gap: 6px; }
+.msg.user { align-items: flex-end; }
+.msg.assistant { align-items: flex-start; }
+
+.msg-bubble {
+  max-width: 88%;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  line-height: 1.65;
+  font-size: 14.5px;
+}
+.msg.user .msg-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: var(--r-sm);
+}
+.msg.assistant .msg-bubble {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-bottom-left-radius: var(--r-sm);
+  width: 100%;
+  max-width: 100%;
+}
+
+/* tool call block */
+.tool-call {
+  background: var(--tool-bg);
+  border: 1px solid var(--tool-border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  margin: 8px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--tool-text);
+  font-family: var(--font-mono);
+  animation: toolPulse 1.8s ease infinite;
+}
+.tool-call.done { animation: none; color: var(--text-secondary); }
+.tool-call.error { color: var(--danger); border-color: rgba(232,93,93,0.2); }
+.tool-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--tool-text);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.tool-call.done .tool-spinner { display: none; }
+.tool-check { display: none; flex-shrink: 0; }
+.tool-call.done .tool-check { display: block; color: var(--success); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toolPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* tool result inline */
+.tool-result {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.tool-result-header {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.tool-result-body {
+  padding: 12px 14px;
+  overflow-x: auto;
+  max-height: 280px; overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* ── Markdown rendering ───────────────────────────────────────────── */
+.md-content { line-height: 1.7; }
+.md-content p { margin-bottom: 10px; }
+.md-content p:last-child { margin-bottom: 0; }
+.md-content h1, .md-content h2, .md-content h3 {
+  font-weight: 600; margin: 16px 0 8px;
+  color: var(--text-primary);
+}
+.md-content h1 { font-size: 20px; }
+.md-content h2 { font-size: 17px; }
+.md-content h3 { font-size: 15px; }
+.md-content ul, .md-content ol { padding-left: 20px; margin-bottom: 10px; }
+.md-content li { margin-bottom: 4px; }
+.md-content a { color: var(--accent); text-decoration: none; }
+.md-content a:hover { text-decoration: underline; }
+.md-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 4px 14px; margin: 10px 0;
+  color: var(--text-secondary);
+  background: var(--accent-dim);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.md-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+.md-content th, .md-content td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.md-content th { background: var(--bg-raised); font-weight: 500; }
+
+/* code blocks */
+.md-content pre {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  overflow-x: auto;
+  margin: 10px 0;
+  position: relative;
+}
+.md-content pre code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.md-content code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--accent-hover);
+}
+
+/* copy button on pre */
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px 0;
+  font-size: 11px; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.copy-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-muted); font-size: 11px;
+  padding: 2px 8px; cursor: pointer; font-family: var(--font-sans);
+  transition: background var(--t), color var(--t);
+}
+.copy-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* mermaid wrapper */
+.mermaid-wrap {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 20px;
+  margin: 10px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* ── Input area ───────────────────────────────────────────────────── */
+.input-area {
+  padding: 16px 20px 20px;
+  background: var(--bg-base);
+  flex-shrink: 0;
+}
+.input-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition: border-color var(--t), box-shadow var(--t);
+  overflow: hidden;
+}
+.input-wrap:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* active tool bar */
+.active-tool-bar {
+  padding: 8px 14px 0;
+  display: flex; align-items: center; gap: 6px;
+  display: none;
+}
+.active-tool-bar.visible { display: flex; }
+.active-tool-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 11px; color: var(--accent);
+}
+.active-tool-pill button {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-size: 14px; line-height: 1;
+  padding: 0; margin-left: 2px;
+}
+
+#chat-input {
+  width: 100%; border: none; outline: none; resize: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 14.5px; color: var(--text-primary);
+  padding: 14px 16px 10px;
+  min-height: 52px; max-height: 200px;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+#chat-input::placeholder { color: var(--text-muted); }
+
+.input-footer {
+  display: flex; align-items: center;
+  padding: 8px 12px 10px;
+  gap: 8px;
+}
+.input-footer-left { display: flex; align-items: center; gap: 6px; }
+
+.icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t), border-color var(--t);
+  font-size: 13px;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-focus); }
+.icon-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.send-btn {
+  margin-left: auto;
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  border: none; cursor: pointer;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), transform 80ms;
+}
+.send-btn:hover { background: var(--accent-hover); }
+.send-btn:active { transform: scale(0.95); }
+.send-btn:disabled { background: var(--bg-raised); color: var(--text-muted); cursor: not-allowed; }
+
+.char-hint {
+  font-size: 11px; color: var(--text-muted);
+  margin-left: auto; margin-right: 4px;
+}
+
+/* ── Panels (Tools / Apps / Settings) ────────────────────────────── */
+#panel-overlay {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(0,0,0,0.45);
+  display: none; align-items: flex-start; justify-content: flex-end;
+}
+#panel-overlay.open { display: flex; }
+
+.panel {
+  width: 400px;
+  height: 100vh;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  height: 56px; display: flex; align-items: center;
+  padding: 0 20px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-title { font-size: 15px; font-weight: 500; }
+.panel-close {
+  margin-left: auto;
+  width: 30px; height: 30px; background: none; border: none;
+  cursor: pointer; color: var(--text-secondary);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t);
+}
+.panel-close:hover { background: var(--bg-hover); }
+.panel-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* server card in panel */
+.server-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.server-card-top { display: flex; align-items: center; gap: 10px; }
+.server-type-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 99px;
+  text-transform: uppercase;
+}
+.badge-command { background: rgba(240,165,42,0.15); color: var(--warning); }
+.badge-rest_api { background: rgba(62,207,142,0.15); color: var(--success); }
+.badge-github, .badge-slack, .badge-gmail { background: var(--accent-dim); color: var(--accent); }
+
+.server-name { font-size: 13px; font-weight: 500; }
+.server-desc { font-size: 12px; color: var(--text-muted); }
+.server-card-actions { display: flex; gap: 6px; }
+.use-tool-btn {
+  padding: 5px 12px; border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  color: var(--accent); font-size: 12px; font-family: var(--font-sans);
+  cursor: pointer; transition: background var(--t);
+}
+.use-tool-btn:hover { background: rgba(124,106,247,0.22); }
+.del-btn {
+  padding: 5px 12px; border-radius: var(--r-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
+  cursor: pointer; transition: background var(--t), color var(--t);
+}
+.del-btn:hover { background: rgba(232,93,93,0.1); color: var(--danger); border-color: rgba(232,93,93,0.3); }
+
+/* create server form */
+.panel-section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 4px 0;
+}
+.form-row { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 12px; color: var(--text-secondary); }
+.form-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color var(--t);
+  width: 100%;
+}
+.form-input:focus { border-color: var(--border-focus); }
+.form-input::placeholder { color: var(--text-muted); }
+.form-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none; cursor: pointer;
+  width: 100%;
+}
+.form-submit {
+  padding: 9px 16px; border-radius: var(--r-md);
+  background: var(--accent); border: none;
+  color: #fff; font-family: var(--font-sans);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background var(--t);
+  width: 100%;
+  margin-top: 4px;
+}
+.form-submit:hover { background: var(--accent-hover); }
+
+/* divider */
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* tabs */
+.panel-tabs {
+  display: flex; gap: 2px; padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-tab {
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--t), border-color var(--t);
+}
+.panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* status indicator */
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.status-dot.offline { background: var(--text-muted); }
+
+/* typing indicator */
+.typing-indicator {
+  display: flex; align-items: center; gap: 5px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg); border-bottom-left-radius: var(--r-sm);
+  width: fit-content;
+}
+.typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-muted);
+  animation: typingBounce 1.2s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Scrollbar for chat ───────────────────────────────────────────── */
+#chat-area::-webkit-scrollbar { width: 5px; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+<aside id="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">M</div>
+    <span class="sb-title">MCP Gateway</span>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="Collapse">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+  </div>
+
+  <button class="new-chat-btn" onclick="newChat()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    <span>New chat</span>
+  </button>
+
+  <div class="sb-section-label">Recent</div>
+  <div class="chat-list" id="chat-list"></div>
+
+  <nav class="sb-nav">
+    <div class="sb-nav-item" onclick="openPanel('tools')" title="Tools">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+      </svg>
+      <span class="sb-nav-label">Tools</span>
+    </div>
+    <div class="sb-nav-item" onclick="openPanel('apps')" title="Apps">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="2" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="15" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="2" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="15" y="14" width="7" height="7" rx="1.5"/>
+      </svg>
+      <span class="sb-nav-label">Apps</span>
+    </div>
+    <div class="sb-nav-item" onclick="openPanel('settings')" title="Settings">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      <span class="sb-nav-label">Settings</span>
+    </div>
+  </nav>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────── -->
+<div id="main">
+  <div class="topbar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.8">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+    </svg>
+    <span class="topbar-title" id="chat-title">New conversation</span>
+    <div class="topbar-right">
+      <select class="model-select" id="model-select">
+        <option value="">Loading models…</option>
+      </select>
+      <div class="tool-badge" id="active-tool-badge" onclick="openPanel('tools')" style="display:none">
+        <div class="tool-dot"></div>
+        <span id="active-tool-name">No tool</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-icon">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="chat-area">
+    <div class="chat-inner" id="chat-inner">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-logo">⚡</div>
+        <h2>MCP Gateway</h2>
+        <p>Chat with Ollama and call any of your MCP servers as tools.</p>
+        <div class="empty-chips">
+          <div class="chip" onclick="setInput('List my GitHub repos')">List my GitHub repos</div>
+          <div class="chip" onclick="setInput('Show Slack channels')">Show Slack channels</div>
+          <div class="chip" onclick="setInput('Draw a mermaid flowchart for a login flow')">Mermaid flowchart</div>
+          <div class="chip" onclick="setInput('What tools do I have?')">What tools do I have?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <div class="active-tool-bar" id="active-tool-bar">
+        <div class="active-tool-pill" id="active-tool-pill">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <span id="tool-pill-name">tool</span>
+          <button onclick="clearTool()">×</button>
+        </div>
+      </div>
+      <textarea
+        id="chat-input"
+        placeholder="Message MCP Gateway…"
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <div class="input-footer">
+        <div class="input-footer-left">
+          <button class="icon-btn" onclick="openPanel('tools')" title="Attach tool">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </button>
+        </div>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Panel Overlay ─────────────────────────────────────────────────── -->
+<div id="panel-overlay" onclick="handleOverlayClick(event)">
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <span class="panel-title" id="panel-title">Tools</span>
+      <button class="panel-close" onclick="closePanel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="panel-tabs" id="panel-tabs"></div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';
+let chats = JSON.parse(localStorage.getItem('mcp_chats') || '[]');
+let activeChatId = null;
+let activeTool = null;
+let servers = [];
+let sidebarCollapsed = false;
+
+// ── Init ──────────────────────────────────────────────────────────────
+mermaid.initialize({
+  startOnLoad: false,
+  theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default',
+  securityLevel: 'loose'
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+  renderChatList();
+  await loadModels();
+  await loadServers();
+  document.getElementById('chat-input').addEventListener('input', () => {
+    const v = document.getElementById('chat-input').value.trim();
+    document.getElementById('send-btn').disabled = !v;
+  });
+});
+
+// ── Theme ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  localStorage.setItem('mcp_theme', next);
+  const icon = document.getElementById('theme-icon');
+  if (next === 'light') {
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+  } else {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  }
+  mermaid.initialize({ theme: next === 'dark' ? 'dark' : 'default', startOnLoad: false, securityLevel: 'loose' });
+}
+
+// apply saved theme
+const savedTheme = localStorage.getItem('mcp_theme');
+if (savedTheme) { document.documentElement.dataset.theme = savedTheme; if (savedTheme === 'light') { document.getElementById('theme-icon').innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'; } }
+
+// ── Sidebar ───────────────────────────────────────────────────────────
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+}
+
+// ── Chat list ─────────────────────────────────────────────────────────
+function renderChatList() {
+  const list = document.getElementById('chat-list');
+  list.innerHTML = '';
+  [...chats].reverse().forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'chat-item' + (c.id === activeChatId ? ' active' : '');
+    el.innerHTML = `
+      <svg class="chat-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      <span class="chat-item-text">${escHtml(c.title)}</span>`;
+    el.onclick = () => loadChat(c.id);
+    list.appendChild(el);
+  });
+}
+
+function newChat() {
+  const id = Date.now().toString();
+  const chat = { id, title: 'New chat', messages: [], tool: null };
+  chats.push(chat);
+  saveChats();
+  loadChat(id);
+}
+
+function loadChat(id) {
+  activeChatId = id;
+  const chat = chats.find(c => c.id === id);
+  document.getElementById('chat-title').textContent = chat.title;
+  const inner = document.getElementById('chat-inner');
+  inner.innerHTML = '';
+
+  if (!chat.messages.length) {
+    inner.innerHTML = `<div class="empty-state" id="empty-state">
+      <div class="empty-logo">⚡</div>
+      <h2>MCP Gateway</h2>
+      <p>Chat with Ollama and call any of your MCP servers as tools.</p>
+      <div class="empty-chips">
+        <div class="chip" onclick="setInput('List my GitHub repos')">List my GitHub repos</div>
+        <div class="chip" onclick="setInput('Show Slack channels')">Show Slack channels</div>
+        <div class="chip" onclick="setInput('Draw a mermaid flowchart for a login flow')">Mermaid flowchart</div>
+        <div class="chip" onclick="setInput('What tools do I have?')">What tools do I have?</div>
+      </div>
+    </div>`;
+  } else {
+    chat.messages.forEach(m => renderMessage(m, false));
+  }
+
+  // restore tool
+  if (chat.tool) setActiveTool(chat.tool, false);
+  else clearTool(false);
+
+  renderChatList();
+  scrollToBottom();
+}
+
+function saveChats() {
+  localStorage.setItem('mcp_chats', JSON.stringify(chats));
+}
+
+function currentChat() {
+  return chats.find(c => c.id === activeChatId);
+}
+
+// ── Models ────────────────────────────────────────────────────────────
+async function loadModels() {
+  const sel = document.getElementById('model-select');
+  try {
+    const r = await fetch(`${API}/ollama/models`);
+    const d = await r.json();
+    sel.innerHTML = d.models.length
+      ? d.models.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('')
+      : '<option value="">No models found</option>';
+  } catch {
+    sel.innerHTML = '<option value="llama3">llama3 (default)</option>';
+  }
+}
+
+// ── Servers ───────────────────────────────────────────────────────────
+async function loadServers() {
+  try {
+    const r = await fetch(`${API}/mcp-servers`);
+    servers = await r.json();
+  } catch { servers = []; }
+}
+
+// ── Tool selection ────────────────────────────────────────────────────
+function setActiveTool(name, save = true) {
+  activeTool = name;
+  document.getElementById('active-tool-bar').classList.add('visible');
+  document.getElementById('tool-pill-name').textContent = name;
+  document.getElementById('active-tool-badge').style.display = 'flex';
+  document.getElementById('active-tool-name').textContent = name;
+  if (save && currentChat()) {
+    currentChat().tool = name;
+    saveChats();
+  }
+}
+
+function clearTool(save = true) {
+  activeTool = null;
+  document.getElementById('active-tool-bar').classList.remove('visible');
+  document.getElementById('active-tool-badge').style.display = 'none';
+  if (save && currentChat()) {
+    currentChat().tool = null;
+    saveChats();
+  }
+}
+
+// ── Send message ──────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // ensure we have an active chat
+  if (!activeChatId) newChat();
+  const chat = currentChat();
+
+  // remove empty state
+  const es = document.getElementById('empty-state');
+  if (es) es.remove();
+
+  // update title if first message
+  if (!chat.messages.length) {
+    chat.title = text.slice(0, 40) + (text.length > 40 ? '…' : '');
+    document.getElementById('chat-title').textContent = chat.title;
+    renderChatList();
+  }
+
+  // add user message
+  const userMsg = { role: 'user', content: text };
+  chat.messages.push(userMsg);
+  saveChats();
+  renderMessage(userMsg, false);
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  scrollToBottom();
+
+  // typing indicator
+  const typingEl = addTypingIndicator();
+
+  try {
+    const model = document.getElementById('model-select').value || 'llama3';
+    const history = chat.messages.slice(0, -1);
+
+    const body = {
+      model,
+      chat_history: history,
+      chat_message: text,
+      stream: true,
+      tool: activeTool || undefined
+    };
+
+    const resp = await fetch(`${API}/ollama/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    typingEl.remove();
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    // show tool call block if tool active
+    let toolCallEl = null;
+    if (activeTool) {
+      toolCallEl = addToolCall(activeTool);
+    }
+
+    // stream response
+    const assistantMsg = { role: 'assistant', content: '' };
+    chat.messages.push(assistantMsg);
+    const msgEl = addAssistantBubble();
+    const contentEl = msgEl.querySelector('.msg-bubble');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try {
+          const data = JSON.parse(line.slice(5).trim());
+          if (data.status === 'done') continue;
+          const token = data?.message?.content || '';
+          assistantMsg.content += token;
+          contentEl.innerHTML = renderMarkdown(assistantMsg.content);
+          renderMermaidInEl(contentEl);
+          scrollToBottom();
+        } catch {}
+      }
+    }
+
+    if (toolCallEl) markToolDone(toolCallEl);
+    saveChats();
+
+  } catch (err) {
+    typingEl?.remove();
+    const errMsg = { role: 'assistant', content: `**Error:** ${err.message}` };
+    chat.messages.push(errMsg);
+    renderMessage(errMsg, false);
+    saveChats();
+  }
+  scrollToBottom();
+}
+
+// ── Rendering helpers ─────────────────────────────────────────────────
+function renderMessage(msg, scroll = true) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${msg.role}`;
+
+  if (msg.role === 'user') {
+    wrap.innerHTML = `<div class="msg-bubble">${escHtml(msg.content)}</div>`;
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble md-content';
+    bubble.innerHTML = renderMarkdown(msg.content);
+    wrap.appendChild(bubble);
+    setTimeout(() => renderMermaidInEl(bubble), 100);
+  }
+
+  inner.appendChild(wrap);
+  if (scroll) scrollToBottom();
+  return wrap;
+}
+
+function addAssistantBubble() {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble md-content';
+  wrap.appendChild(bubble);
+  inner.appendChild(wrap);
+  return wrap;
+}
+
+function addTypingIndicator() {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="typing-indicator">
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  </div>`;
+  inner.appendChild(wrap);
+  scrollToBottom();
+  return wrap;
+}
+
+function addToolCall(toolName) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="tool-call" id="tc-${Date.now()}">
+    <div class="tool-spinner"></div>
+    <svg class="tool-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    Calling tool: ${escHtml(toolName)}
+  </div>`;
+  inner.appendChild(wrap);
+  scrollToBottom();
+  return wrap.querySelector('.tool-call');
+}
+
+function markToolDone(el) {
+  el.classList.add('done');
+}
+
+function addToolResult(label, data) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="tool-result">
+    <div class="tool-result-header">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      ${escHtml(label)}
+    </div>
+    <div class="tool-result-body">${escHtml(typeof data === 'string' ? data : JSON.stringify(data, null, 2))}</div>
+  </div>`;
+  inner.appendChild(wrap);
+  scrollToBottom();
+}
+
+// ── Markdown + Mermaid ────────────────────────────────────────────────
+function renderMarkdown(text) {
+  // intercept mermaid fences before marked processes them
+  const MERMAID_PH = [];
+  const withPH = text.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
+    const i = MERMAID_PH.length;
+    MERMAID_PH.push(code.trim());
+    return `MERMAID_PLACEHOLDER_${i}`;
+  });
+
+  let html = marked.parse(withPH);
+
+  // restore as mermaid divs
+  html = html.replace(/MERMAID_PLACEHOLDER_(\d+)/g, (_, i) => {
+    return `<div class="mermaid-wrap"><div class="mermaid">${escHtml(MERMAID_PH[i])}</div></div>`;
+  });
+
+  // add copy buttons to code blocks
+  html = html.replace(/<pre><code(.*?)>([\s\S]*?)<\/code><\/pre>/g, (_, attrs, code) => {
+    const lang = (attrs.match(/class="language-(\w+)"/) || [])[1] || '';
+    return `<div class="code-header"><span>${lang}</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><code${attrs}>${code}</code></pre>`;
+  });
+
+  return html;
+}
+
+async function renderMermaidInEl(el) {
+  const divs = el.querySelectorAll('.mermaid:not([data-processed])');
+  for (const div of divs) {
+    div.setAttribute('data-processed', '1');
+    try {
+      const id = 'mermaid-' + Math.random().toString(36).slice(2);
+      const { svg } = await mermaid.render(id, div.textContent);
+      div.innerHTML = svg;
+    } catch (e) {
+      div.innerHTML = `<span style="color:var(--danger);font-size:12px">Mermaid error: ${escHtml(e.message)}</span>`;
+    }
+  }
+}
+
+function copyCode(btn) {
+  const code = btn.closest('.code-header').nextElementSibling.querySelector('code');
+  navigator.clipboard.writeText(code.textContent);
+  btn.textContent = 'copied!';
+  setTimeout(() => btn.textContent = 'copy', 1800);
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────
+let currentPanel = null;
+
+function openPanel(type) {
+  currentPanel = type;
+  document.getElementById('panel-overlay').classList.add('open');
+  if (type === 'tools') renderToolsPanel();
+  else if (type === 'apps') renderAppsPanel();
+  else if (type === 'settings') renderSettingsPanel();
+}
+
+function closePanel() {
+  document.getElementById('panel-overlay').classList.remove('open');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('panel-overlay')) closePanel();
+}
+
+// ── Tools panel ───────────────────────────────────────────────────────
+function renderToolsPanel() {
+  document.getElementById('panel-title').textContent = 'Tools';
+  document.getElementById('panel-tabs').innerHTML = `
+    <div class="panel-tab active" onclick="switchTab(this,'tl-list')">Your tools</div>
+    <div class="panel-tab" onclick="switchTab(this,'tl-create')">Create</div>`;
+
+  const body = document.getElementById('panel-body');
+  body.innerHTML = `
+    <div id="tl-list">
+      ${servers.length ? '' : '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">No tools yet. Create one!</p>'}
+      ${servers.map(s => serverCard(s)).join('')}
+    </div>
+    <div id="tl-create" style="display:none;flex-direction:column;gap:10px">
+      <div class="panel-section-label">Type</div>
+      <select class="form-select" id="create-type" onchange="renderCreateForm()">
+        <option value="command">Command (Type 1)</option>
+        <option value="rest_api">REST API (Type 2)</option>
+      </select>
+      <div id="create-form-fields"></div>
+    </div>`;
+  renderCreateForm();
+}
+
+function serverCard(s) {
+  const isActive = activeTool === s.name;
+  return `<div class="server-card" id="sc-${s.id}">
+    <div class="server-card-top">
+      <span class="server-type-badge badge-${s.server_type}">${s.server_type}</span>
+      <span class="server-name">${escHtml(s.name)}</span>
+      <div class="status-dot ${s.is_running ? '' : 'offline'}" style="margin-left:auto" title="${s.is_running ? 'Running' : 'Idle'}"></div>
+    </div>
+    ${s.description ? `<div class="server-desc">${escHtml(s.description)}</div>` : ''}
+    <div class="server-card-actions">
+      <button class="use-tool-btn ${isActive ? 'active' : ''}" onclick="${isActive ? 'clearTool()' : `setActiveTool('${escHtml(s.name)}')`};closePanel()">
+        ${isActive ? '✓ Active' : 'Use tool'}
+      </button>
+      <button class="del-btn" onclick="deleteServer(${s.id})">Delete</button>
+    </div>
+  </div>`;
+}
+
+function renderCreateForm() {
+  const type = document.getElementById('create-type')?.value;
+  const container = document.getElementById('create-form-fields');
+  if (!container) return;
+
+  const common = `
+    <div class="form-row"><label class="form-label">Name</label><input class="form-input" id="cf-name" placeholder="my-server" /></div>
+    <div class="form-row"><label class="form-label">Description</label><input class="form-input" id="cf-desc" placeholder="Optional" /></div>`;
+
+  if (type === 'command') {
+    container.innerHTML = common + `
+      <div class="form-row"><label class="form-label">Command</label><input class="form-input" id="cf-cmd" placeholder="psql" /></div>
+      <div class="form-row"><label class="form-label">Args (comma-separated)</label><input class="form-input" id="cf-args" placeholder="-U postgres, -d mydb" /></div>
+      <div class="form-row"><label class="form-label">Idle timeout (seconds)</label><input class="form-input" type="number" id="cf-timeout" value="300" /></div>
+      <button class="form-submit" onclick="createCommandServer()">Create command server</button>`;
+  } else if (type === 'rest_api') {
+    container.innerHTML = common + `
+      <div class="form-row"><label class="form-label">Host URL</label><input class="form-input" id="cf-host" placeholder="https://api.example.com" /></div>
+      <div class="form-row"><label class="form-label">Headers (JSON)</label><textarea class="form-input" id="cf-headers" rows="2" placeholder='{"Authorization":"Bearer ..."}'></textarea></div>
+      <button class="form-submit" onclick="createRestServer()">Create REST server</button>`;
+  }
+}
+
+async function createCommandServer() {
+  const name = document.getElementById('cf-name').value.trim();
+  const cmd  = document.getElementById('cf-cmd').value.trim();
+  if (!name || !cmd) return alert('Name and command are required.');
+  const args = document.getElementById('cf-args').value.split(',').map(a => a.trim()).filter(Boolean);
+  const timeout = parseInt(document.getElementById('cf-timeout').value) || 300;
+  const desc = document.getElementById('cf-desc').value.trim();
+  try {
+    const r = await fetch(`${API}/mcp-servers/command`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, description: desc, command: cmd, args, idle_timeout: timeout })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    await loadServers();
+    renderToolsPanel();
+    switchTabByName('tl-list');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function createRestServer() {
+  const name = document.getElementById('cf-name').value.trim();
+  const host = document.getElementById('cf-host').value.trim();
+  if (!name || !host) return alert('Name and host are required.');
+  let headers = {};
+  try { headers = JSON.parse(document.getElementById('cf-headers').value || '{}'); } catch {}
+  try {
+    const r = await fetch(`${API}/mcp-servers/rest-api`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, description: document.getElementById('cf-desc').value, host, headers, endpoints: [] })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    await loadServers();
+    renderToolsPanel();
+    switchTabByName('tl-list');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function deleteServer(id) {
+  if (!confirm('Delete this server?')) return;
+  try {
+    await fetch(`${API}/mcp-servers/${id}`, { method: 'DELETE' });
+    await loadServers();
+    if (currentPanel === 'tools') renderToolsPanel();
+    else if (currentPanel === 'apps') renderAppsPanel();
+  } catch {}
+}
+
+// ── Apps panel ────────────────────────────────────────────────────────
+function renderAppsPanel() {
+  document.getElementById('panel-title').textContent = 'Apps';
+  document.getElementById('panel-tabs').innerHTML = `
+    <div class="panel-tab active" onclick="switchTab(this,'ap-list')">Connected</div>
+    <div class="panel-tab" onclick="switchTab(this,'ap-github')">GitHub</div>
+    <div class="panel-tab" onclick="switchTab(this,'ap-slack')">Slack</div>
+    <div class="panel-tab" onclick="switchTab(this,'ap-gmail')">Gmail</div>`;
+
+  const appServers = servers.filter(s => ['github','slack','gmail'].includes(s.server_type));
+
+  document.getElementById('panel-body').innerHTML = `
+    <div id="ap-list">
+      ${appServers.length ? appServers.map(s => serverCard(s)).join('') : '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">No apps connected yet.</p>'}
+    </div>
+
+    <div id="ap-github" style="display:none;flex-direction:column;gap:10px">
+      <div class="panel-section-label">Connect GitHub</div>
+      <div class="form-row"><label class="form-label">Name</label><input class="form-input" id="gh-name" placeholder="my-github" /></div>
+      <div class="form-row"><label class="form-label">Personal Access Token</label><input class="form-input" type="password" id="gh-token" placeholder="ghp_..." /></div>
+      <div class="form-row"><label class="form-label">Description</label><input class="form-input" id="gh-desc" placeholder="Optional" /></div>
+      <button class="form-submit" onclick="createGithub()">Connect GitHub</button>
+    </div>
+
+    <div id="ap-slack" style="display:none;flex-direction:column;gap:10px">
+      <div class="panel-section-label">Connect Slack</div>
+      <div class="form-row"><label class="form-label">Name</label><input class="form-input" id="sl-name" placeholder="my-slack" /></div>
+      <div class="form-row"><label class="form-label">Bot Token</label><input class="form-input" type="password" id="sl-token" placeholder="xoxb-..." /></div>
+      <div class="form-row"><label class="form-label">Description</label><input class="form-input" id="sl-desc" placeholder="Optional" /></div>
+      <button class="form-submit" onclick="createSlack()">Connect Slack</button>
+    </div>
+
+    <div id="ap-gmail" style="display:none;flex-direction:column;gap:10px">
+      <div class="panel-section-label">Connect Gmail (OAuth2)</div>
+      <div class="form-row"><label class="form-label">Name</label><input class="form-input" id="gm-name" placeholder="my-gmail" /></div>
+      <div class="form-row"><label class="form-label">Client ID</label><input class="form-input" id="gm-cid" placeholder="....apps.googleusercontent.com" /></div>
+      <div class="form-row"><label class="form-label">Client Secret</label><input class="form-input" type="password" id="gm-csec" /></div>
+      <div class="form-row"><label class="form-label">Refresh Token</label><input class="form-input" type="password" id="gm-rtok" /></div>
+      <button class="form-submit" onclick="createGmail()">Connect Gmail</button>
+    </div>`;
+}
+
+async function createGithub() {
+  const name  = document.getElementById('gh-name').value.trim();
+  const token = document.getElementById('gh-token').value.trim();
+  if (!name || !token) return alert('Name and token required.');
+  try {
+    const r = await fetch(`${API}/mcp-servers/github`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, personal_access_token: token, description: document.getElementById('gh-desc').value })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    await loadServers(); renderAppsPanel(); switchTabByName('ap-list');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function createSlack() {
+  const name  = document.getElementById('sl-name').value.trim();
+  const token = document.getElementById('sl-token').value.trim();
+  if (!name || !token) return alert('Name and bot token required.');
+  try {
+    const r = await fetch(`${API}/mcp-servers/slack`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, bot_token: token, description: document.getElementById('sl-desc').value })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    await loadServers(); renderAppsPanel(); switchTabByName('ap-list');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function createGmail() {
+  const name = document.getElementById('gm-name').value.trim();
+  const cid  = document.getElementById('gm-cid').value.trim();
+  const csec = document.getElementById('gm-csec').value.trim();
+  const rtok = document.getElementById('gm-rtok').value.trim();
+  if (!name || !cid || !csec || !rtok) return alert('All fields required.');
+  try {
+    const r = await fetch(`${API}/mcp-servers/gmail`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, client_id: cid, client_secret: csec, refresh_token: rtok })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    await loadServers(); renderAppsPanel(); switchTabByName('ap-list');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Settings panel ────────────────────────────────────────────────────
+function renderSettingsPanel() {
+  document.getElementById('panel-title').textContent = 'Settings';
+  document.getElementById('panel-tabs').innerHTML = '';
+  document.getElementById('panel-body').innerHTML = `
+    <div class="panel-section-label">Appearance</div>
+    <div class="server-card" style="flex-direction:row;align-items:center;justify-content:space-between">
+      <span style="font-size:13px">Dark mode</span>
+      <button class="icon-btn" onclick="toggleTheme()" style="width:auto;padding:0 10px;font-size:12px">Toggle</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="panel-section-label">Backend</div>
+    <div class="form-row"><label class="form-label">API URL</label><input class="form-input" id="api-url" value="${API}" /></div>
+    <button class="form-submit" style="margin-top:4px" onclick="alert('Reload page to apply.')">Save</button>
+
+    <div class="divider"></div>
+    <div class="panel-section-label">Danger zone</div>
+    <button class="del-btn" style="width:100%;text-align:center" onclick="if(confirm('Clear all chats?')){localStorage.removeItem('mcp_chats');location.reload();}">Clear all chat history</button>`;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(el, targetId) {
+  el.closest('.panel').querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-body').querySelectorAll('[id]').forEach(d => {
+    d.style.display = d.id === targetId ? 'flex' : 'none';
+  });
+}
+function switchTabByName(id) {
+  const el = document.querySelector(`.panel-tab[onclick*="${id}"]`);
+  if (el) switchTab(el, id);
+}
+
+function scrollToBottom() {
+  const area = document.getElementById('chat-area');
+  area.scrollTop = area.scrollHeight;
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!document.getElementById('send-btn').disabled) sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+function setInput(text) {
+  const el = document.getElementById('chat-input');
+  el.value = text;
+  el.focus();
+  autoResize(el);
+  document.getElementById('send-btn').disabled = false;
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!chats.length) newChat();
+  else loadChat(chats[chats.length - 1].id);
+});
+</script>
+</body>
+</html>
