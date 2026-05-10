@@ -1,1838 +1,1173 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MCP Gateway</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    :root {
-      --font-sans: 'Instrument Sans', sans-serif;
-      --font-mono: 'Geist Mono', monospace;
-
-      /* sidebar */
-      --sb-w: 240px;
-      --sb-collapsed: 56px;
-
-      /* radii */
-      --r-sm: 6px;
-      --r-md: 10px;
-      --r-lg: 14px;
-
-      /* transitions */
-      --t: 180ms ease;
-    }
-
-    [data-theme="dark"] {
-      --bg-base: #0e0e10;
-      --bg-surface: #161618;
-      --bg-raised: #1e1e22;
-      --bg-hover: #26262c;
-      --bg-active: #2e2e36;
-      --bg-input: #1a1a1e;
-
-      --border: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(255, 255, 255, 0.22);
-
-      --text-primary: #f0f0f2;
-      --text-secondary: #8a8a96;
-      --text-muted: #55555e;
-
-      --accent: #FFEA00;
-      --accent-dim: rgba(247, 245, 106, 0.15);
-      --accent-hover: #FFEE8C;
-
-      --tool-bg: #1c1c20;
-      --tool-border: rgba(255, 255, 255, 0.06);
-      --tool-text: #6e6e7a;
-
-      --code-bg: #13131600;
-      --success: #3ecf8e;
-      --warning: #f0a52a;
-      --danger: #e85d5d;
-
-      --scrollbar: rgba(255, 255, 255, 0.08);
-    }
-
-    [data-theme="light"] {
-      --bg-base: #f6f6f8;
-      --bg-surface: #ffffff;
-      --bg-raised: #f0f0f4;
-      --bg-hover: #ebebf0;
-      --bg-active: #e2e2ea;
-      --bg-input: #ffffff;
-
-      --border: rgba(0, 0, 0, 0.09);
-      --border-focus: rgba(0, 0, 0, 0.22);
-
-      --text-primary: #18181c;
-      --text-secondary: #5a5a6a;
-      --text-muted: #9a9aaa;
-
-      --accent: #FFEA00;
-      --accent-dim: rgba(247, 245, 106, 0.15);
-      --accent-hover: #FFEE8C;
-
-      --tool-bg: #f2f2f6;
-      --tool-border: rgba(0, 0, 0, 0.06);
-      --tool-text: #8a8a98;
-
-      --code-bg: #f0f0f4;
-      --success: #2ea96a;
-      --warning: #d48e1a;
-      --danger: #c94242;
-
-      --scrollbar: rgba(0, 0, 0, 0.12);
-    }
-
-    /* ── Scrollbars ───────────────────────────────────────────────────── */
-    ::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--scrollbar);
-      border-radius: 99px;
-    }
-
-    /* ── Base Layout ──────────────────────────────────────────────────── */
-    html,
-    body {
-      height: 100%;
-      overflow: hidden;
-    }
-
-    body {
-      font-family: var(--font-sans);
-      background: var(--bg-base);
-      color: var(--text-primary);
-      display: flex;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    /* ── Sidebar ──────────────────────────────────────────────────────── */
-    #sidebar {
-      width: var(--sb-w);
-      min-width: var(--sb-w);
-      background: var(--bg-surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      transition: width var(--t), min-width var(--t);
-      overflow: hidden;
-      position: relative;
-      z-index: 10;
-    }
-
-    #sidebar.collapsed {
-      width: var(--sb-collapsed);
-      min-width: var(--sb-collapsed);
-    }
-
-    .sb-header {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      padding: 0 14px;
-      gap: 10px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .sb-logo {
-      width: 28px;
-      height: 28px;
-      background: var(--accent);
-      border-radius: var(--r-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 13px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .sb-title {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      transition: opacity var(--t);
-      color: var(--text-primary);
-    }
-
-    #sidebar.collapsed .sb-title {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .sb-toggle {
-      margin-left: auto;
-      flex-shrink: 0;
-      width: 28px;
-      height: 28px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      color: var(--text-secondary);
-      border-radius: var(--r-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t), color var(--t);
-    }
-
-    .sb-toggle:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .sb-toggle svg {
-      transition: transform 300ms ease;
-    }
-
-    #sidebar.collapsed .sb-toggle svg {
-      transform: rotate(180deg);
-    }
-
-    /* new chat button */
-    .new-chat-btn {
-      margin: 12px 10px 8px;
-      padding: 8px 12px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(217, 247, 106, 0.25);
-      border-radius: var(--r-md);
-      color: var(--accent);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background var(--t), border-color var(--t);
-      white-space: nowrap;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .new-chat-btn:hover {
-      background: rgba(238, 247, 106, 0.22);
-      border-color: rgba(221, 247, 106, 0.4);
-    }
-
-    .new-chat-btn span {
-      transition: opacity var(--t);
-    }
-
-    #sidebar.collapsed .new-chat-btn span {
-      opacity: 0;
-    }
-
-    #sidebar.collapsed .new-chat-btn {
-      justify-content: center;
-      padding: 8px;
-    }
-
-    /* chat history list */
-    .sb-section-label {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 0 14px;
-      margin-top: 4px;
-      margin-bottom: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      transition: opacity var(--t);
-      flex-shrink: 0;
-    }
-
-    #sidebar.collapsed .sb-section-label {
-      opacity: 0;
-    }
-
-    .chat-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 6px;
-    }
-
-    .chat-item {
-      padding: 7px 10px;
-      border-radius: var(--r-md);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      transition: background var(--t);
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    .chat-item:hover {
-      background: var(--bg-hover);
-    }
-
-    .chat-item.active {
-      background: var(--bg-active);
-    }
-
-    .chat-item-icon {
-      flex-shrink: 0;
-      color: var(--text-muted);
-    }
-
-    .chat-item-text {
-      font-size: 13px;
-      color: var(--text-secondary);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
-      transition: opacity var(--t);
-    }
-
-    .chat-item.active .chat-item-text {
-      color: var(--text-primary);
-    }
-
-    #sidebar.collapsed .chat-item-text {
-      opacity: 0;
-    }
-
-    .chat-del-btn {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      border-radius: 4px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      transition: background var(--t), color var(--t);
-    }
-
-    .chat-item:hover .chat-del-btn {
-      display: flex;
-    }
-
-    .chat-del-btn:hover {
-      background: rgba(232, 93, 93, 0.15);
-      color: var(--danger);
-    }
-
-    #sidebar.collapsed .chat-del-btn {
-      display: none !important;
-    }
-
-    /* sidebar nav bottom */
-    .sb-nav {
-      border-top: 1px solid var(--border);
-      padding: 8px 6px;
-      flex-shrink: 0;
-    }
-
-    .sb-nav-item {
-      padding: 8px 10px;
-      border-radius: var(--r-md);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: background var(--t);
-      color: var(--text-secondary);
-      font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    .sb-nav-item:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .sb-nav-item.active {
-      background: var(--bg-active);
-      color: var(--text-primary);
-    }
-
-    .sb-nav-item svg {
-      flex-shrink: 0;
-    }
-
-    .sb-nav-label {
-      transition: opacity var(--t);
-    }
-
-    #sidebar.collapsed .sb-nav-label {
-      opacity: 0;
-    }
-
-    /* ── Main Area ────────────────────────────────────────────────────── */
-    #main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background: var(--bg-base);
-    }
-
-    /* topbar */
-    .topbar {
-      height: 56px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      gap: 12px;
-      flex-shrink: 0;
-      background: var(--bg-surface);
-    }
-
-    .topbar-title {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    .topbar-right {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* model selector */
-    .model-select {
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      color: var(--text-secondary);
-      font-family: var(--font-sans);
-      font-size: 12px;
-      padding: 5px 10px;
-      cursor: pointer;
-      outline: none;
-    }
-
-    .model-select:focus {
-      border-color: var(--border-focus);
-    }
-
-    /* tool badge */
-    .tool-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 5px 10px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: background var(--t);
-    }
-
-    .tool-badge:hover {
-      background: var(--bg-hover);
-    }
-
-    .tool-badge.active {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-dim);
-    }
-
-    .tool-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-    }
-
-    /* theme toggle */
-    .theme-toggle {
-      width: 32px;
-      height: 32px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      background: var(--bg-raised);
-      cursor: pointer;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t), color var(--t);
-    }
-
-    .theme-toggle:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .topbar-sb-toggle {
-      width: 32px;
-      height: 32px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      background: var(--bg-raised);
-      cursor: pointer;
-      color: var(--text-secondary);
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t), color var(--t);
-      margin-right: 4px;
-      flex-shrink: 0;
-    }
-
-    .topbar-sb-toggle:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    /* ── Chat Area ────────────────────────────────────────────────────── */
-    #chat-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 32px 0;
-    }
-
-    .chat-inner {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 0 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-
-    /* empty state */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 16px;
-      color: var(--text-muted);
-      text-align: center;
-      padding: 40px;
-      min-height: 300px;
-    }
-
-    .empty-logo {
-      width: 56px;
-      height: 56px;
-      background: var(--accent-dim);
-      border-radius: var(--r-lg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      color: var(--accent);
-      border: 1px solid rgba(124, 106, 247, 0.2);
-    }
-
-    .empty-state h2 {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-
-    .empty-state p {
-      font-size: 13px;
-      max-width: 300px;
-      line-height: 1.6;
-    }
-
-    .empty-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-top: 8px;
-    }
-
-    .chip {
-      padding: 7px 14px;
-      border-radius: 99px;
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: background var(--t), border-color var(--t);
-    }
-
-    .chip:hover {
-      background: var(--bg-hover);
-      border-color: var(--border-focus);
-      color: var(--text-primary);
-    }
-
-    /* messages */
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .msg.user {
-      align-items: flex-end;
-    }
-
-    .msg.assistant {
-      align-items: flex-start;
-    }
-
-    .msg-bubble {
-      max-width: 88%;
-      padding: 12px 16px;
-      border-radius: var(--r-lg);
-      line-height: 1.65;
-      font-size: 14.5px;
-    }
-
-    .msg.user .msg-bubble {
-      background: var(--accent);
-      color: #242424;
-      border-bottom-right-radius: var(--r-sm);
-    }
-
-    .msg.assistant .msg-bubble {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      color: var(--text-primary);
-      border-bottom-left-radius: var(--r-sm);
-      width: 100%;
-      max-width: 100%;
-    }
-
-    /* tool call block */
-    .tool-call {
-      background: var(--tool-bg);
-      border: 1px solid var(--tool-border);
-      border-radius: var(--r-md);
-      padding: 10px 14px;
-      margin: 8px 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--tool-text);
-      font-family: var(--font-mono);
-      animation: toolPulse 1.8s ease infinite;
-    }
-
-    .tool-call.done {
-      animation: none;
-      color: var(--text-secondary);
-    }
-
-    .tool-call.error {
-      color: var(--danger);
-      border-color: rgba(232, 93, 93, 0.2);
-    }
-
-    .tool-spinner {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      border: 1.5px solid var(--tool-text);
-      border-top-color: transparent;
-      animation: spin 0.8s linear infinite;
-      flex-shrink: 0;
-    }
-
-    .tool-call.done .tool-spinner {
-      display: none;
-    }
-
-    .tool-check {
-      display: none;
-      flex-shrink: 0;
-    }
-
-    .tool-call.done .tool-check {
-      display: block;
-      color: var(--success);
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    @keyframes toolPulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.65;
-      }
-    }
-
-    /* tool result inline */
-    .tool-result {
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      overflow: hidden;
-      margin: 8px 0;
-      font-size: 13px;
-    }
-
-    .tool-result-header {
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .tool-result-body {
-      padding: 12px 14px;
-      overflow-x: auto;
-      max-height: 280px;
-      overflow-y: auto;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text-secondary);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* ── Markdown rendering ───────────────────────────────────────────── */
-    .md-content {
-      line-height: 1.7;
-    }
-
-    .md-content p {
-      margin-bottom: 10px;
-    }
-
-    .md-content p:last-child {
-      margin-bottom: 0;
-    }
-
-    .md-content h1,
-    .md-content h2,
-    .md-content h3 {
-      font-weight: 600;
-      margin: 16px 0 8px;
-      color: var(--text-primary);
-    }
-
-    .md-content h1 {
-      font-size: 20px;
-    }
-
-    .md-content h2 {
-      font-size: 17px;
-    }
-
-    .md-content h3 {
-      font-size: 15px;
-    }
-
-    .md-content ul,
-    .md-content ol {
-      padding-left: 20px;
-      margin-bottom: 10px;
-    }
-
-    .md-content li {
-      margin-bottom: 4px;
-    }
-
-    .md-content a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .md-content a:hover {
-      text-decoration: underline;
-    }
-
-    .md-content blockquote {
-      border-left: 3px solid var(--accent);
-      padding: 4px 14px;
-      margin: 10px 0;
-      color: var(--text-secondary);
-      background: var(--accent-dim);
-      border-radius: 0 var(--r-sm) var(--r-sm) 0;
-    }
-
-    .md-content table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0;
-      font-size: 13px;
-    }
-
-    .md-content th,
-    .md-content td {
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      text-align: left;
-    }
-
-    .md-content th {
-      background: var(--bg-raised);
-      font-weight: 500;
-    }
-
-    /* code blocks */
-    .md-content pre {
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 14px;
-      overflow-x: auto;
-      margin: 10px 0;
-      position: relative;
-    }
-
-    .md-content pre code {
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      color: var(--text-primary);
-      background: transparent;
-      padding: 0;
-      border-radius: 0;
-    }
-
-    .md-content code {
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      padding: 1px 5px;
-      border-radius: 4px;
-      color: var(--accent-hover);
-    }
-
-    /* copy button on pre */
-    .code-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 14px 0;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-    }
-
-    .copy-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text-muted);
-      font-size: 11px;
-      padding: 2px 8px;
-      cursor: pointer;
-      font-family: var(--font-sans);
-      transition: background var(--t), color var(--t);
-    }
-
-    .copy-btn:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    /* mermaid wrapper */
-    .mermaid-wrap {
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 20px;
-      margin: 10px 0;
-      overflow-x: auto;
-      text-align: center;
-    }
-
-    .mermaid-wrap svg {
-      max-width: 100%;
-      height: auto;
-    }
-
-    /* HTML/Chart preview block */
-    .preview-block {
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      overflow: hidden;
-      margin: 10px 0;
-    }
-
-    .preview-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      background: var(--bg-raised);
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-    }
-
-    .preview-toolbar-right {
-      margin-left: auto;
-      display: flex;
-      gap: 6px;
-    }
-
-    .preview-tab {
-      padding: 3px 10px;
-      border-radius: var(--r-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      cursor: pointer;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-sans);
-      transition: background var(--t), color var(--t), border-color var(--t);
-    }
-
-    .preview-tab.active {
-      background: var(--accent-dim);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .preview-tab:hover:not(.active) {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .preview-iframe-wrap {
-      background: #fff;
-      min-height: 180px;
-      position: relative;
-    }
-
-    .preview-iframe-wrap iframe {
-      width: 100%;
-      border: none;
-      display: block;
-      min-height: 180px;
-    }
-
-    .preview-code-wrap {
-      display: none;
-    }
-
-    .preview-code-wrap.visible {
-      display: block;
-    }
-
-    .preview-iframe-wrap.hidden {
-      display: none;
-    }
-
-    .iframe-resizer {
-      height: 8px;
-      background: var(--bg-raised);
-      border-top: 1px solid var(--border);
-      cursor: ns-resize;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t);
-      flex-shrink: 0;
-    }
-
-    .iframe-resizer:hover {
-      background: var(--bg-hover);
-    }
-
-    .iframe-resizer::after {
-      content: '';
-      width: 32px;
-      height: 3px;
-      border-radius: 99px;
-      background: var(--border-focus);
-      opacity: 0.5;
-    }
-
-    /* ── Think blocks (reasoning models) ────────────────────────────── */
-    .think-block {
-      margin: 6px 0 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      overflow: hidden;
-    }
-
-    .think-toggle {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: var(--bg-raised);
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      font-size: 12px;
-      font-family: var(--font-sans);
-      text-align: left;
-      transition: background var(--t);
-    }
-
-    .think-toggle:hover {
-      background: var(--bg-hover);
-      color: var(--text-secondary);
-    }
-
-    .think-spinner {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 1.5px solid var(--text-muted);
-      border-top-color: transparent;
-      animation: spin 0.8s linear infinite;
-      flex-shrink: 0;
-    }
-
-    .think-block.open .think-spinner {
-      display: none;
-    }
-
-    .think-label {
-      font-style: italic;
-    }
-
-    .think-block.open .think-label::before {
-      content: "";
-    }
-
-    .think-chevron {
-      margin-left: auto;
-      flex-shrink: 0;
-      transition: transform 200ms ease;
-      color: var(--text-muted);
-    }
-
-    .think-block.open .think-chevron {
-      transform: rotate(180deg);
-    }
-
-    .think-content {
-      display: none;
-      padding: 10px 14px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      border-top: 1px solid var(--border);
-      background: var(--bg-surface);
-      max-height: 320px;
-      overflow-y: auto;
-    }
-
-    .think-block.open .think-content {
-      display: block;
-    }
-
-    .think-block.open .think-toggle {
-      color: var(--text-secondary);
-    }
-
-    /* tool error icon */
-    .tool-error-icon {
-      display: none;
-      flex-shrink: 0;
-      color: var(--danger);
-    }
-
-    .tool-call.error .tool-error-icon {
-      display: block;
-    }
-
-    .tool-call.error .tool-spinner {
-      display: none;
-    }
-
-    /* ── Input area ───────────────────────────────────────────────────── */
-    .input-area {
-      padding: 16px 20px 20px;
-      background: var(--bg-base);
-      flex-shrink: 0;
-    }
-
-    .input-wrap {
-      max-width: 720px;
-      margin: 0 auto;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      transition: border-color var(--t), box-shadow var(--t);
-      overflow: hidden;
-    }
-
-    .input-wrap:focus-within {
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px var(--accent-dim);
-    }
-
-    /* active tool bar */
-    .active-tool-bar {
-      padding: 8px 14px 0;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      display: none;
-    }
-
-    .active-tool-bar.visible {
-      display: flex;
-    }
-
-    .active-tool-pill {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(124, 106, 247, 0.25);
-      border-radius: 99px;
-      padding: 3px 10px;
-      font-size: 11px;
-      color: var(--accent);
-    }
-
-    .active-tool-pill button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--accent);
-      font-size: 14px;
-      line-height: 1;
-      padding: 0;
-      margin-left: 2px;
-    }
-
-    #chat-input {
-      width: 100%;
-      border: none;
-      outline: none;
-      resize: none;
-      background: transparent;
-      font-family: var(--font-sans);
-      font-size: 14.5px;
-      color: var(--text-primary);
-      padding: 14px 16px 10px;
-      min-height: 52px;
-      max-height: 200px;
-      line-height: 1.6;
-      overflow-y: auto;
-    }
-
-    #chat-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .input-footer {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px 10px;
-      gap: 8px;
-    }
-
-    .input-footer-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .icon-btn {
-      width: 30px;
-      height: 30px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: transparent;
-      cursor: pointer;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t), color var(--t), border-color var(--t);
-      font-size: 13px;
-    }
-
-    .icon-btn:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-      border-color: var(--border-focus);
-    }
-
-    .icon-btn.active {
-      background: var(--accent-dim);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .send-btn {
-      margin-left: auto;
-      width: 32px;
-      height: 32px;
-      border-radius: var(--r-sm);
-      background: var(--accent);
-      border: none;
-      cursor: pointer;
-      color: #242424;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t), transform 80ms;
-    }
-
-    .send-btn:hover {
-      background: var(--accent-hover);
-    }
-
-    .send-btn:active {
-      transform: scale(0.95);
-    }
-
-    .send-btn:disabled {
-      background: var(--bg-raised);
-      color: var(--text-muted);
-      cursor: not-allowed;
-    }
-
-    .char-hint {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-left: auto;
-      margin-right: 4px;
-    }
-
-    /* ── Panels (Tools / Apps / Settings) ────────────────────────────── */
-    #panel-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 40;
-      background: rgba(0, 0, 0, 0.45);
-      display: none;
-      align-items: flex-start;
-      justify-content: flex-end;
-    }
-
-    #panel-overlay.open {
-      display: flex;
-    }
-
-    .panel {
-      width: 400px;
-      height: 100vh;
-      background: var(--bg-surface);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .panel-header {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      gap: 12px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .panel-title {
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .panel-close {
-      margin-left: auto;
-      width: 30px;
-      height: 30px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-secondary);
-      border-radius: var(--r-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background var(--t);
-    }
-
-    .panel-close:hover {
-      background: var(--bg-hover);
-    }
-
-    .panel-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    /* server card in panel */
-    .server-card {
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .server-card-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .server-type-badge {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      padding: 2px 7px;
-      border-radius: 99px;
-      text-transform: uppercase;
-    }
-
-    .badge-command {
-      background: rgba(240, 165, 42, 0.15);
-      color: var(--warning);
-    }
-
-    .badge-rest_api {
-      background: rgba(62, 207, 142, 0.15);
-      color: var(--success);
-    }
-
-    .badge-github,
-    .badge-slack,
-    .badge-gmail {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-
-    .server-name {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .server-desc {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .server-card-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .use-tool-btn {
-      padding: 5px 12px;
-      border-radius: var(--r-sm);
-      background: var(--accent-dim);
-      border: 1px solid rgba(226, 247, 106, 0.25);
-      color: var(--accent);
-      font-size: 12px;
-      font-family: var(--font-sans);
-      cursor: pointer;
-      transition: background var(--t);
-    }
-
-    .use-tool-btn:hover {
-      background: rgba(233, 247, 106, 0.22);
-    }
-
-    .del-btn {
-      padding: 5px 12px;
-      border-radius: var(--r-sm);
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 12px;
-      font-family: var(--font-sans);
-      cursor: pointer;
-      transition: background var(--t), color var(--t);
-    }
-
-    .del-btn:hover {
-      background: rgba(232, 93, 93, 0.1);
-      color: var(--danger);
-      border-color: rgba(232, 93, 93, 0.3);
-    }
-
-    /* create server form */
-    .panel-section-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 4px 0;
-    }
-
-    .form-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .form-label {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    .form-input {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      padding: 7px 10px;
-      outline: none;
-      transition: border-color var(--t);
-      width: 100%;
-    }
-
-    .form-input:focus {
-      border-color: var(--border-focus);
-    }
-
-    .form-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .form-select {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      padding: 7px 10px;
-      outline: none;
-      cursor: pointer;
-      width: 100%;
-    }
-
-    .form-submit {
-      padding: 9px 16px;
-      border-radius: var(--r-md);
-      background: var(--accent);
-      border: none;
-      color: #242424;
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background var(--t);
-      width: 100%;
-      margin-top: 4px;
-    }
-
-    .form-submit:hover {
-      background: var(--accent-hover);
-    }
-
-    /* divider */
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 4px 0;
-    }
-
-    /* tabs */
-    .panel-tabs {
-      display: flex;
-      gap: 2px;
-      padding: 0 16px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .panel-tab {
-      padding: 10px 14px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      transition: color var(--t), border-color var(--t);
-    }
-
-    .panel-tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-
-    /* status indicator */
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--success);
-      flex-shrink: 0;
-    }
-
-    .status-dot.offline {
-      background: var(--text-muted);
-    }
-
-    /* typing indicator */
-    .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 10px 14px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      border-bottom-left-radius: var(--r-sm);
-      width: fit-content;
-    }
-
-    .typing-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      animation: typingBounce 1.2s ease infinite;
-    }
-
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes typingBounce {
-
-      0%,
-      100% {
-        transform: translateY(0);
-        opacity: 0.4;
-      }
-
-      50% {
-        transform: translateY(-4px);
-        opacity: 1;
-      }
-    }
-
-    /* ── Scrollbar for chat ───────────────────────────────────────────── */
-    #chat-area::-webkit-scrollbar {
-      width: 5px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+/* ── Reset & Tokens ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font-sans: 'Instrument Sans', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+
+  /* sidebar */
+  --sb-w: 240px;
+  --sb-collapsed: 56px;
+
+  /* radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* transitions */
+  --t: 180ms ease;
+}
+
+[data-theme="dark"] {
+  --bg-base:    #0e0e10;
+  --bg-surface: #161618;
+  --bg-raised:  #1e1e22;
+  --bg-hover:   #26262c;
+  --bg-active:  #2e2e36;
+  --bg-input:   #1a1a1e;
+
+  --border:       rgba(255,255,255,0.08);
+  --border-focus: rgba(255,255,255,0.22);
+
+  --text-primary:   #f0f0f2;
+  --text-secondary: #8a8a96;
+  --text-muted:     #55555e;
+
+  --accent:       #7c6af7;
+  --accent-dim:   rgba(124,106,247,0.15);
+  --accent-hover: #9182f9;
+
+  --tool-bg:     #1c1c20;
+  --tool-border: rgba(255,255,255,0.06);
+  --tool-text:   #6e6e7a;
+
+  --code-bg:  #13131600;
+  --success:  #3ecf8e;
+  --warning:  #f0a52a;
+  --danger:   #e85d5d;
+
+  --scrollbar: rgba(255,255,255,0.08);
+}
+
+[data-theme="light"] {
+  --bg-base:    #f6f6f8;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f0f0f4;
+  --bg-hover:   #ebebf0;
+  --bg-active:  #e2e2ea;
+  --bg-input:   #ffffff;
+
+  --border:       rgba(0,0,0,0.09);
+  --border-focus: rgba(0,0,0,0.22);
+
+  --text-primary:   #18181c;
+  --text-secondary: #5a5a6a;
+  --text-muted:     #9a9aaa;
+
+  --accent:       #6254e8;
+  --accent-dim:   rgba(98,84,232,0.1);
+  --accent-hover: #7364f0;
+
+  --tool-bg:     #f2f2f6;
+  --tool-border: rgba(0,0,0,0.06);
+  --tool-text:   #8a8a98;
+
+  --code-bg:  #f0f0f4;
+  --success:  #2ea96a;
+  --warning:  #d48e1a;
+  --danger:   #c94242;
+
+  --scrollbar: rgba(0,0,0,0.12);
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 99px; }
+
+/* ── Base Layout ──────────────────────────────────────────────────── */
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  display: flex;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sb-w);
+  min-width: var(--sb-w);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--t), min-width var(--t);
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+#sidebar.collapsed { width: var(--sb-collapsed); min-width: var(--sb-collapsed); }
+
+.sb-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sb-logo {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px; font-weight: 600; color: #fff;
+}
+.sb-title {
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden;
+  transition: opacity var(--t);
+  color: var(--text-primary);
+}
+#sidebar.collapsed .sb-title { opacity: 0; pointer-events: none; }
+
+.sb-toggle {
+  margin-left: auto; flex-shrink: 0;
+  width: 28px; height: 28px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-secondary); border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t);
+}
+.sb-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sb-toggle svg { transition: transform 300ms ease; }
+#sidebar.collapsed .sb-toggle svg { transform: rotate(180deg); }
+
+/* new chat button */
+.new-chat-btn {
+  margin: 12px 10px 8px;
+  padding: 8px 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: var(--r-md);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: background var(--t), border-color var(--t);
+  white-space: nowrap; overflow: hidden;
+  flex-shrink: 0;
+}
+.new-chat-btn:hover { background: rgba(124,106,247,0.22); border-color: rgba(124,106,247,0.4); }
+.new-chat-btn span { transition: opacity var(--t); }
+#sidebar.collapsed .new-chat-btn span { opacity: 0; }
+#sidebar.collapsed .new-chat-btn { justify-content: center; padding: 8px; }
+
+/* chat history list */
+.sb-section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 14px;
+  margin-top: 4px; margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden;
+  transition: opacity var(--t);
+  flex-shrink: 0;
+}
+#sidebar.collapsed .sb-section-label { opacity: 0; }
+
+.chat-list {
+  flex: 1; overflow-y: auto;
+  padding: 0 6px;
+}
+.chat-item {
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 9px;
+  transition: background var(--t);
+  white-space: nowrap; overflow: hidden;
+}
+.chat-item:hover { background: var(--bg-hover); }
+.chat-item.active { background: var(--bg-active); }
+.chat-item-icon { flex-shrink: 0; color: var(--text-muted); }
+.chat-item-text {
+  font-size: 13px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis;
+  flex: 1;
+  transition: opacity var(--t);
+}
+.chat-item.active .chat-item-text { color: var(--text-primary); }
+#sidebar.collapsed .chat-item-text { opacity: 0; }
+.chat-del-btn {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  background: none; border: none;
+  cursor: pointer; color: var(--text-muted);
+  border-radius: 4px;
+  display: none; align-items: center; justify-content: center;
+  padding: 0;
+  transition: background var(--t), color var(--t);
+}
+.chat-item:hover .chat-del-btn { display: flex; }
+.chat-del-btn:hover { background: rgba(232,93,93,0.15); color: var(--danger); }
+#sidebar.collapsed .chat-del-btn { display: none !important; }
+
+/* sidebar nav bottom */
+.sb-nav {
+  border-top: 1px solid var(--border);
+  padding: 8px 6px;
+  flex-shrink: 0;
+}
+.sb-nav-item {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  transition: background var(--t);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap; overflow: hidden;
+}
+.sb-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sb-nav-item.active { background: var(--bg-active); color: var(--text-primary); }
+.sb-nav-item svg { flex-shrink: 0; }
+.sb-nav-label { transition: opacity var(--t); }
+#sidebar.collapsed .sb-nav-label { opacity: 0; }
+
+/* ── Main Area ────────────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* topbar */
+.topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+.topbar-title {
+  font-size: 14px; font-weight: 500;
+  color: var(--text-primary);
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* model selector */
+.model-select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+}
+.model-select:focus { border-color: var(--border-focus); }
+
+/* tool badge */
+.tool-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px 10px;
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--t);
+}
+.tool-badge:hover { background: var(--bg-hover); }
+.tool-badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+/* theme toggle */
+.theme-toggle {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-raised);
+  cursor: pointer; color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t);
+}
+.theme-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.topbar-sb-toggle {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-raised);
+  cursor: pointer; color: var(--text-secondary);
+  align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t);
+  margin-right: 4px; flex-shrink: 0;
+}
+.topbar-sb-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ── Chat Area ────────────────────────────────────────────────────── */
+#chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 0;
+}
+.chat-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* empty state */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+  min-height: 300px;
+}
+.empty-logo {
+  width: 56px; height: 56px;
+  background: var(--accent-dim);
+  border-radius: var(--r-lg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: var(--accent);
+  border: 1px solid rgba(124,106,247,0.2);
+}
+.empty-state h2 { font-size: 18px; font-weight: 500; color: var(--text-secondary); }
+.empty-state p { font-size: 13px; max-width: 300px; line-height: 1.6; }
+.empty-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+.chip {
+  padding: 7px 14px; border-radius: 99px;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; transition: background var(--t), border-color var(--t);
+}
+.chip:hover { background: var(--bg-hover); border-color: var(--border-focus); color: var(--text-primary); }
+
+/* messages */
+.msg { display: flex; flex-direction: column; gap: 6px; }
+.msg.user { align-items: flex-end; }
+.msg.assistant { align-items: flex-start; }
+
+.msg-bubble {
+  max-width: 88%;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  line-height: 1.65;
+  font-size: 14.5px;
+}
+.msg.user .msg-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: var(--r-sm);
+}
+.msg.assistant .msg-bubble {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-bottom-left-radius: var(--r-sm);
+  width: 100%;
+  max-width: 100%;
+}
+
+/* tool call block */
+.tool-call {
+  background: var(--tool-bg);
+  border: 1px solid var(--tool-border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  margin: 8px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--tool-text);
+  font-family: var(--font-mono);
+  animation: toolPulse 1.8s ease infinite;
+}
+.tool-call.done { animation: none; color: var(--text-secondary); }
+.tool-call.error { color: var(--danger); border-color: rgba(232,93,93,0.2); }
+.tool-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--tool-text);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.tool-call.done .tool-spinner { display: none; }
+.tool-check { display: none; flex-shrink: 0; }
+.tool-call.done .tool-check { display: block; color: var(--success); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toolPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* tool result inline */
+.tool-result {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.tool-result-header {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.tool-result-body {
+  padding: 12px 14px;
+  overflow-x: auto;
+  max-height: 280px; overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* ── Markdown rendering ───────────────────────────────────────────── */
+.md-content { line-height: 1.7; }
+.md-content p { margin-bottom: 10px; }
+.md-content p:last-child { margin-bottom: 0; }
+.md-content h1, .md-content h2, .md-content h3 {
+  font-weight: 600; margin: 16px 0 8px;
+  color: var(--text-primary);
+}
+.md-content h1 { font-size: 20px; }
+.md-content h2 { font-size: 17px; }
+.md-content h3 { font-size: 15px; }
+.md-content ul, .md-content ol { padding-left: 20px; margin-bottom: 10px; }
+.md-content li { margin-bottom: 4px; }
+.md-content a { color: var(--accent); text-decoration: none; }
+.md-content a:hover { text-decoration: underline; }
+.md-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 4px 14px; margin: 10px 0;
+  color: var(--text-secondary);
+  background: var(--accent-dim);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.md-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+.md-content th, .md-content td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.md-content th { background: var(--bg-raised); font-weight: 500; }
+
+/* code blocks */
+.md-content pre {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  overflow-x: auto;
+  margin: 10px 0;
+  position: relative;
+}
+.md-content pre code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.md-content code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--accent-hover);
+}
+
+/* copy button on pre */
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px 0;
+  font-size: 11px; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.copy-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-muted); font-size: 11px;
+  padding: 2px 8px; cursor: pointer; font-family: var(--font-sans);
+  transition: background var(--t), color var(--t);
+}
+.copy-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* mermaid wrapper */
+.mermaid-wrap {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 20px;
+  margin: 10px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.mermaid-wrap svg { max-width: 100%; height: auto; }
+
+/* HTML/Chart preview block */
+.preview-block {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin: 10px 0;
+}
+.preview-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.preview-toolbar-right { margin-left: auto; display: flex; gap: 6px; }
+.preview-tab {
+  padding: 3px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: transparent; cursor: pointer;
+  font-size: 11px; color: var(--text-muted);
+  font-family: var(--font-sans);
+  transition: background var(--t), color var(--t), border-color var(--t);
+}
+.preview-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.preview-tab:hover:not(.active) { background: var(--bg-hover); color: var(--text-primary); }
+.preview-iframe-wrap {
+  background: #fff;
+  min-height: 180px;
+  position: relative;
+}
+.preview-iframe-wrap iframe {
+  width: 100%; border: none; display: block;
+  min-height: 180px;
+}
+.preview-code-wrap { display: none; }
+.preview-code-wrap.visible { display: block; }
+.preview-iframe-wrap.hidden { display: none; }
+.iframe-resizer {
+  height: 8px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border);
+  cursor: ns-resize;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t);
+  flex-shrink: 0;
+}
+.iframe-resizer:hover { background: var(--bg-hover); }
+.iframe-resizer::after {
+  content: '';
+  width: 32px; height: 3px;
+  border-radius: 99px;
+  background: var(--border-focus);
+  opacity: 0.5;
+}
+
+/* ── Think blocks (reasoning models) ────────────────────────────── */
+.think-block {
+  margin: 6px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.think-toggle {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 12px;
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: background var(--t);
+}
+.think-toggle:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.think-spinner {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.think-block.open .think-spinner { display: none; }
+.think-label { font-style: italic; }
+.think-block.open .think-label::before { content: ""; }
+.think-chevron {
+  margin-left: auto; flex-shrink: 0;
+  transition: transform 200ms ease;
+  color: var(--text-muted);
+}
+.think-block.open .think-chevron { transform: rotate(180deg); }
+.think-content {
+  display: none;
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  max-height: 320px; overflow-y: auto;
+}
+.think-block.open .think-content { display: block; }
+.think-block.open .think-toggle { color: var(--text-secondary); }
+
+/* tool error icon */
+.tool-error-icon { display: none; flex-shrink: 0; color: var(--danger); }
+.tool-call.error .tool-error-icon { display: block; }
+.tool-call.error .tool-spinner { display: none; }
+
+/* ── Input area ───────────────────────────────────────────────────── */
+.input-area {
+  padding: 16px 20px 20px;
+  background: var(--bg-base);
+  flex-shrink: 0;
+}
+.input-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition: border-color var(--t), box-shadow var(--t);
+  overflow: hidden;
+}
+.input-wrap:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* active tool bar */
+.active-tool-bar {
+  padding: 8px 14px 0;
+  display: flex; align-items: center; gap: 6px;
+  display: none;
+}
+.active-tool-bar.visible { display: flex; }
+.active-tool-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 11px; color: var(--accent);
+}
+.active-tool-pill button {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-size: 14px; line-height: 1;
+  padding: 0; margin-left: 2px;
+}
+
+#chat-input {
+  width: 100%; border: none; outline: none; resize: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 14.5px; color: var(--text-primary);
+  padding: 14px 16px 10px;
+  min-height: 52px; max-height: 200px;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+#chat-input::placeholder { color: var(--text-muted); }
+
+.input-footer {
+  display: flex; align-items: center;
+  padding: 8px 12px 10px;
+  gap: 8px;
+}
+.input-footer-left { display: flex; align-items: center; gap: 6px; }
+
+.icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t), border-color var(--t);
+  font-size: 13px;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-focus); }
+.icon-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.send-btn {
+  margin-left: auto;
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  border: none; cursor: pointer;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), transform 80ms;
+}
+.send-btn:hover { background: var(--accent-hover); }
+.send-btn:active { transform: scale(0.95); }
+.send-btn:disabled { background: var(--bg-raised); color: var(--text-muted); cursor: not-allowed; }
+
+.char-hint {
+  font-size: 11px; color: var(--text-muted);
+  margin-left: auto; margin-right: 4px;
+}
+
+/* ── Panels (Tools / Apps / Settings) ────────────────────────────── */
+#panel-overlay {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(0,0,0,0.45);
+  display: none; align-items: flex-start; justify-content: flex-end;
+}
+#panel-overlay.open { display: flex; }
+
+.panel {
+  width: 400px;
+  height: 100vh;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  height: 56px; display: flex; align-items: center;
+  padding: 0 20px; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-title { font-size: 15px; font-weight: 500; }
+.panel-close {
+  margin-left: auto;
+  width: 30px; height: 30px; background: none; border: none;
+  cursor: pointer; color: var(--text-secondary);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t);
+}
+.panel-close:hover { background: var(--bg-hover); }
+.panel-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* server card in panel */
+.server-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.server-card-top { display: flex; align-items: center; gap: 10px; }
+.server-type-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 99px;
+  text-transform: uppercase;
+}
+.badge-command { background: rgba(240,165,42,0.15); color: var(--warning); }
+.badge-rest_api { background: rgba(62,207,142,0.15); color: var(--success); }
+.badge-github, .badge-slack, .badge-gmail { background: var(--accent-dim); color: var(--accent); }
+
+.server-name { font-size: 13px; font-weight: 500; }
+.server-desc { font-size: 12px; color: var(--text-muted); }
+.server-card-actions { display: flex; gap: 6px; }
+.use-tool-btn {
+  padding: 5px 12px; border-radius: var(--r-sm);
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,106,247,0.25);
+  color: var(--accent); font-size: 12px; font-family: var(--font-sans);
+  cursor: pointer; transition: background var(--t);
+}
+.use-tool-btn:hover { background: rgba(124,106,247,0.22); }
+.del-btn {
+  padding: 5px 12px; border-radius: var(--r-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
+  cursor: pointer; transition: background var(--t), color var(--t);
+}
+.del-btn:hover { background: rgba(232,93,93,0.1); color: var(--danger); border-color: rgba(232,93,93,0.3); }
+
+/* create server form */
+.panel-section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 4px 0;
+}
+.form-row { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 12px; color: var(--text-secondary); }
+.form-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color var(--t);
+  width: 100%;
+}
+.form-input:focus { border-color: var(--border-focus); }
+.form-input::placeholder { color: var(--text-muted); }
+.form-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none; cursor: pointer;
+  width: 100%;
+}
+.form-submit {
+  padding: 9px 16px; border-radius: var(--r-md);
+  background: var(--accent); border: none;
+  color: #fff; font-family: var(--font-sans);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background var(--t);
+  width: 100%;
+  margin-top: 4px;
+}
+.form-submit:hover { background: var(--accent-hover); }
+
+/* divider */
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* tabs */
+.panel-tabs {
+  display: flex; gap: 2px; padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-tab {
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--t), border-color var(--t);
+}
+.panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* status indicator */
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.status-dot.offline { background: var(--text-muted); }
+
+/* typing indicator */
+.typing-indicator {
+  display: flex; align-items: center; gap: 5px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg); border-bottom-left-radius: var(--r-sm);
+  width: fit-content;
+}
+.typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-muted);
+  animation: typingBounce 1.2s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ── Scrollbar for chat ───────────────────────────────────────────── */
+#chat-area::-webkit-scrollbar { width: 5px; }
+</style>
 </head>
-
 <body>
 
-  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
-  <aside id="sidebar">
-    <div class="sb-header">
-      <div class="sb-logo">
-        <img src="mcp.png" alt="Logo" style="width: 30px;">
-      </div>
-      <span class="sb-title">MCP Gateway</span>
-      <button class="sb-toggle" onclick="toggleSidebar()" title="Collapse">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
-    </div>
-
-    <button class="new-chat-btn" onclick="newChat()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M12 5v14M5 12h14" />
+<!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+<aside id="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">M</div>
+    <span class="sb-title">MCP Gateway</span>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="Collapse">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
       </svg>
-      <span>New chat</span>
     </button>
+  </div>
 
-    <div class="sb-section-label">Recent</div>
-    <div class="chat-list" id="chat-list"></div>
+  <button class="new-chat-btn" onclick="newChat()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    <span>New chat</span>
+  </button>
 
-    <nav class="sb-nav">
-      <div class="sb-nav-item" onclick="openPanel('tools')" title="Tools">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path
-            d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-        </svg>
-        <span class="sb-nav-label">Tools</span>
-      </div>
-      <div class="sb-nav-item" onclick="openPanel('apps')" title="Apps">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <rect x="2" y="3" width="7" height="7" rx="1.5" />
-          <rect x="15" y="3" width="7" height="7" rx="1.5" />
-          <rect x="2" y="14" width="7" height="7" rx="1.5" />
-          <rect x="15" y="14" width="7" height="7" rx="1.5" />
-        </svg>
-        <span class="sb-nav-label">Apps</span>
-      </div>
-      <div class="sb-nav-item" onclick="openPanel('settings')" title="Settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <circle cx="12" cy="12" r="3" />
-          <path
-            d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-        </svg>
-        <span class="sb-nav-label">Settings</span>
-      </div>
-    </nav>
-  </aside>
+  <div class="sb-section-label">Recent</div>
+  <div class="chat-list" id="chat-list"></div>
 
-  <!-- ── Main ─────────────────────────────────────────────────────────── -->
-  <div id="main">
-    <div class="topbar">
-      <button class="topbar-sb-toggle" onclick="toggleSidebar()" id="topbar-sb-btn" title="Toggle sidebar"
-        style="display:none">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
+  <nav class="sb-nav">
+    <div class="sb-nav-item" onclick="openPanel('tools')" title="Tools">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+      </svg>
+      <span class="sb-nav-label">Tools</span>
+    </div>
+    <div class="sb-nav-item" onclick="openPanel('apps')" title="Apps">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="2" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="15" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="2" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="15" y="14" width="7" height="7" rx="1.5"/>
+      </svg>
+      <span class="sb-nav-label">Apps</span>
+    </div>
+    <div class="sb-nav-item" onclick="openPanel('settings')" title="Settings">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      <span class="sb-nav-label">Settings</span>
+    </div>
+  </nav>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────── -->
+<div id="main">
+  <div class="topbar">
+    <button class="topbar-sb-toggle" onclick="toggleSidebar()" id="topbar-sb-btn" title="Toggle sidebar" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.8">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+    </svg>
+    <span class="topbar-title" id="chat-title">New conversation</span>
+    <div class="topbar-right">
+      <select class="model-select" id="model-select">
+        <option value="">Loading models…</option>
+      </select>
+      <div class="tool-badge" id="active-tool-badge" onclick="openPanel('tools')" style="display:none">
+        <div class="tool-dot"></div>
+        <span id="active-tool-name">No tool</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-icon">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
         </svg>
       </button>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.8">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-      </svg>
-      <span class="topbar-title" id="chat-title">New conversation</span>
-      <div class="topbar-right">
-        <select class="model-select" id="model-select">
-          <option value="">Loading models…</option>
-        </select>
-        <div class="tool-badge" id="active-tool-badge" onclick="openPanel('tools')" style="display:none">
-          <div class="tool-dot"></div>
-          <span id="active-tool-name">No tool</span>
+    </div>
+  </div>
+
+  <div id="chat-area">
+    <div class="chat-inner" id="chat-inner">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-logo">⚡</div>
+        <h2>MCP Gateway</h2>
+        <p>Chat with Ollama and call any of your MCP servers as tools.</p>
+        <div class="empty-chips">
+          <div class="chip" onclick="setInput('List my GitHub repos')">List my GitHub repos</div>
+          <div class="chip" onclick="setInput('Show Slack channels')">Show Slack channels</div>
+          <div class="chip" onclick="setInput('Draw a mermaid flowchart for a login flow')">Mermaid flowchart</div>
+          <div class="chip" onclick="setInput('What tools do I have?')">What tools do I have?</div>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            id="theme-icon">
-            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <div class="active-tool-bar" id="active-tool-bar">
+        <div class="active-tool-pill" id="active-tool-pill">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
           </svg>
-        </button>
-      </div>
-    </div>
-
-    <div id="chat-area">
-      <div class="chat-inner" id="chat-inner">
-        <div class="empty-state" id="empty-state">
-          <div class="empty-logo">⚡</div>
-          <h2>MCP Gateway</h2>
-          <p>Chat with Ollama and call any of your MCP servers as tools.</p>
-          <div class="empty-chips">
-            <div class="chip" onclick="setInput('List my GitHub repos')">List my GitHub repos</div>
-            <div class="chip" onclick="setInput('Show Slack channels')">Show Slack channels</div>
-            <div class="chip" onclick="setInput('Draw a mermaid flowchart for a login flow')">Mermaid flowchart</div>
-            <div class="chip" onclick="setInput('What tools do I have?')">What tools do I have?</div>
-          </div>
+          <span id="tool-pill-name">tool</span>
+          <button onclick="clearTool()">×</button>
         </div>
       </div>
-    </div>
-
-    <div class="input-area">
-      <div class="input-wrap">
-        <div class="active-tool-bar" id="active-tool-bar">
-          <div class="active-tool-pill" id="active-tool-pill">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path
-                d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-            </svg>
-            <span id="tool-pill-name">tool</span>
-            <button onclick="clearTool()">×</button>
-          </div>
-        </div>
-        <textarea id="chat-input" placeholder="Message MCP Gateway…" rows="1" onkeydown="handleKey(event)"
-          oninput="autoResize(this)"></textarea>
-        <div class="input-footer">
-          <div class="input-footer-left">
-            <button class="icon-btn" onclick="openPanel('tools')" title="Attach tool">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path
-                  d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-              </svg>
-            </button>
-          </div>
-          <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 19V5M5 12l7-7 7 7" />
+      <textarea
+        id="chat-input"
+        placeholder="Message MCP Gateway…"
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <div class="input-footer">
+        <div class="input-footer-left">
+          <button class="icon-btn" onclick="openPanel('tools')" title="Attach tool">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
             </svg>
           </button>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Panel Overlay ─────────────────────────────────────────────────── -->
-  <div id="panel-overlay" onclick="handleOverlayClick(event)">
-    <div class="panel" id="panel">
-      <div class="panel-header">
-        <span class="panel-title" id="panel-title">Tools</span>
-        <button class="panel-close" onclick="closePanel()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12" />
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
           </svg>
         </button>
       </div>
-      <div class="panel-tabs" id="panel-tabs"></div>
-      <div class="panel-body" id="panel-body"></div>
     </div>
   </div>
+</div>
 
-  <script>
-    // ── State ─────────────────────────────────────────────────────────────
-    let API = localStorage.getItem('mcp_api_url') || 'http://localhost:8000';
-    let chats = JSON.parse(localStorage.getItem('mcp_chats') || '[]');
-    let activeChatId = null;
-    let activeTool = null;
-    let servers = [];
-    let sidebarCollapsed = false;
+<!-- ── Panel Overlay ─────────────────────────────────────────────────── -->
+<div id="panel-overlay" onclick="handleOverlayClick(event)">
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <span class="panel-title" id="panel-title">Tools</span>
+      <button class="panel-close" onclick="closePanel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="panel-tabs" id="panel-tabs"></div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
 
-    // ── API helper ────────────────────────────────────────────────────────
-    async function apiFetch(path, opts = {}) {
-      const url = API.replace(/\/$/, '') + path;
-      let resp;
-      try {
-        resp = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
-      } catch (e) {
-        throw new Error(`Cannot reach backend at ${API}. Is it running? (${e.message})`);
-      }
-      if (!resp.ok) {
-        let detail = `HTTP ${resp.status}`;
-        try { const j = await resp.json(); detail = j.detail || JSON.stringify(j); } catch { }
-        throw new Error(detail);
-      }
-      return resp;
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+let API = localStorage.getItem('mcp_api_url') || 'http://localhost:8000';
+let chats = JSON.parse(localStorage.getItem('mcp_chats') || '[]');
+let activeChatId = null;
+let activeTool = null;
+let servers = [];
+let sidebarCollapsed = false;
+
+// ── API helper ────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const url = API.replace(/\/$/, '') + path;
+  let resp;
+  try {
+    resp = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  } catch (e) {
+    throw new Error(`Cannot reach backend at ${API}. Is it running? (${e.message})`);
+  }
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try { const j = await resp.json(); detail = j.detail || JSON.stringify(j); } catch {}
+    throw new Error(detail);
+  }
+  return resp;
+}
+
+function setBtnLoading(btn, loading, label) {
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Saving…' : label;
+}
+
+function showFormError(containerId, msg) {
+  let el = document.getElementById(containerId + '-err');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = containerId + '-err';
+    el.style.cssText = 'font-size:12px;color:var(--danger);padding:6px 10px;background:rgba(232,93,93,0.1);border-radius:var(--r-sm);border:1px solid rgba(232,93,93,0.25);margin-top:4px';
+    const c = document.getElementById(containerId);
+    if (c) c.appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+function clearFormError(containerId) {
+  const el = document.getElementById(containerId + '-err');
+  if (el) el.remove();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+mermaid.initialize({
+  startOnLoad: false,
+  theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default',
+  securityLevel: 'loose'
+});
+
+// Auto-size preview iframes via postMessage (safe, no allow-same-origin needed)
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'iframe-height' && e.data.id) {
+    const frame = document.getElementById(e.data.id + '-frame');
+    if (frame && e.data.height > 60) {
+      frame.style.height = Math.min(e.data.height + 24, 600) + 'px';
     }
+  }
+});
 
-    function setBtnLoading(btn, loading, label) {
-      btn.disabled = loading;
-      btn.textContent = loading ? 'Saving…' : label;
-    }
+window.addEventListener('DOMContentLoaded', async () => {
+  renderChatList();
+  await loadModels();
+  await loadServers();
+  document.getElementById('chat-input').addEventListener('input', () => {
+    const v = document.getElementById('chat-input').value.trim();
+    document.getElementById('send-btn').disabled = !v;
+  });
+});
 
-    function showFormError(containerId, msg) {
-      let el = document.getElementById(containerId + '-err');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = containerId + '-err';
-        el.style.cssText = 'font-size:12px;color:var(--danger);padding:6px 10px;background:rgba(232,93,93,0.1);border-radius:var(--r-sm);border:1px solid rgba(232,93,93,0.25);margin-top:4px';
-        const c = document.getElementById(containerId);
-        if (c) c.appendChild(el);
-      }
-      el.textContent = msg;
-    }
+// ── Theme ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  localStorage.setItem('mcp_theme', next);
+  const icon = document.getElementById('theme-icon');
+  if (next === 'light') {
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+  } else {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  }
+  mermaid.initialize({ theme: next === 'dark' ? 'dark' : 'default', startOnLoad: false, securityLevel: 'loose' });
+}
 
-    function clearFormError(containerId) {
-      const el = document.getElementById(containerId + '-err');
-      if (el) el.remove();
-    }
+// apply saved theme
+const savedTheme = localStorage.getItem('mcp_theme');
+if (savedTheme) { document.documentElement.dataset.theme = savedTheme; if (savedTheme === 'light') { document.getElementById('theme-icon').innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'; } }
 
-    // ── Init ──────────────────────────────────────────────────────────────
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default',
-      securityLevel: 'loose'
-    });
+// ── Sidebar ───────────────────────────────────────────────────────────
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+  // Show hamburger in topbar only when sidebar is collapsed
+  const btn = document.getElementById('topbar-sb-btn');
+  if (btn) btn.style.display = sidebarCollapsed ? 'flex' : 'none';
+}
 
-    // Auto-size preview iframes via postMessage (safe, no allow-same-origin needed)
-    window.addEventListener('message', (e) => {
-      if (e.data?.type === 'iframe-height' && e.data.id) {
-        const frame = document.getElementById(e.data.id + '-frame');
-        if (frame && e.data.height > 60) {
-          frame.style.height = Math.min(e.data.height + 24, 600) + 'px';
-        }
-      }
-    });
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      renderChatList();
-      await loadModels();
-      await loadServers();
-      document.getElementById('chat-input').addEventListener('input', () => {
-        const v = document.getElementById('chat-input').value.trim();
-        document.getElementById('send-btn').disabled = !v;
-      });
-    });
-
-    // ── Theme ─────────────────────────────────────────────────────────────
-    function toggleTheme() {
-      const html = document.documentElement;
-      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
-      html.dataset.theme = next;
-      localStorage.setItem('mcp_theme', next);
-      const icon = document.getElementById('theme-icon');
-      if (next === 'light') {
-        icon.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
-      } else {
-        icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
-      }
-      mermaid.initialize({ theme: next === 'dark' ? 'dark' : 'default', startOnLoad: false, securityLevel: 'loose' });
-    }
-
-    // apply saved theme
-    const savedTheme = localStorage.getItem('mcp_theme');
-    if (savedTheme) { document.documentElement.dataset.theme = savedTheme; if (savedTheme === 'light') { document.getElementById('theme-icon').innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'; } }
-
-    // ── Sidebar ───────────────────────────────────────────────────────────
-    function toggleSidebar() {
-      sidebarCollapsed = !sidebarCollapsed;
-      document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
-      // Show hamburger in topbar only when sidebar is collapsed
-      const btn = document.getElementById('topbar-sb-btn');
-      if (btn) btn.style.display = sidebarCollapsed ? 'flex' : 'none';
-    }
-
-    // ── Chat list ─────────────────────────────────────────────────────────
-    function renderChatList() {
-      const list = document.getElementById('chat-list');
-      list.innerHTML = '';
-      [...chats].reverse().forEach(c => {
-        const el = document.createElement('div');
-        el.className = 'chat-item' + (c.id === activeChatId ? ' active' : '');
-        el.innerHTML = `
+// ── Chat list ─────────────────────────────────────────────────────────
+function renderChatList() {
+  const list = document.getElementById('chat-list');
+  list.innerHTML = '';
+  [...chats].reverse().forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'chat-item' + (c.id === activeChatId ? ' active' : '');
+    el.innerHTML = `
       <svg class="chat-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
@@ -1842,40 +1177,40 @@
           <path d="M18 6L6 18M6 6l12 12"/>
         </svg>
       </button>`;
-        el.addEventListener('click', (e) => { if (!e.target.closest('.chat-del-btn')) loadChat(c.id); });
-        list.appendChild(el);
-      });
-    }
+    el.addEventListener('click', (e) => { if (!e.target.closest('.chat-del-btn')) loadChat(c.id); });
+    list.appendChild(el);
+  });
+}
 
-    function deleteChat(e, id) {
-      e.stopPropagation();
-      chats = chats.filter(c => c.id !== id);
-      saveChats();
-      if (activeChatId === id) {
-        if (chats.length) loadChat(chats[chats.length - 1].id);
-        else newChat();
-      } else {
-        renderChatList();
-      }
-    }
+function deleteChat(e, id) {
+  e.stopPropagation();
+  chats = chats.filter(c => c.id !== id);
+  saveChats();
+  if (activeChatId === id) {
+    if (chats.length) loadChat(chats[chats.length - 1].id);
+    else newChat();
+  } else {
+    renderChatList();
+  }
+}
 
-    function newChat() {
-      const id = Date.now().toString();
-      const chat = { id, title: 'New chat', messages: [], tool: null };
-      chats.push(chat);
-      saveChats();
-      loadChat(id);
-    }
+function newChat() {
+  const id = Date.now().toString();
+  const chat = { id, title: 'New chat', messages: [], tool: null };
+  chats.push(chat);
+  saveChats();
+  loadChat(id);
+}
 
-    function loadChat(id) {
-      activeChatId = id;
-      const chat = chats.find(c => c.id === id);
-      document.getElementById('chat-title').textContent = chat.title;
-      const inner = document.getElementById('chat-inner');
-      inner.innerHTML = '';
+function loadChat(id) {
+  activeChatId = id;
+  const chat = chats.find(c => c.id === id);
+  document.getElementById('chat-title').textContent = chat.title;
+  const inner = document.getElementById('chat-inner');
+  inner.innerHTML = '';
 
-      if (!chat.messages.length) {
-        inner.innerHTML = `<div class="empty-state" id="empty-state">
+  if (!chat.messages.length) {
+    inner.innerHTML = `<div class="empty-state" id="empty-state">
       <div class="empty-logo">⚡</div>
       <h2>MCP Gateway</h2>
       <p>Chat with Ollama and call any of your MCP servers as tools.</p>
@@ -1886,378 +1221,378 @@
         <div class="chip" onclick="setInput('What tools do I have?')">What tools do I have?</div>
       </div>
     </div>`;
-      } else {
-        chat.messages.forEach(m => renderMessage(m, false));
-      }
+  } else {
+    chat.messages.forEach(m => renderMessage(m, false));
+  }
 
-      // restore tool
-      if (chat.tool) setActiveTool(chat.tool, false);
-      else clearTool(false);
+  // restore tool
+  if (chat.tool) setActiveTool(chat.tool, false);
+  else clearTool(false);
 
-      renderChatList();
-      scrollToBottom();
-    }
+  renderChatList();
+  scrollToBottom();
+}
 
-    function saveChats() {
-      localStorage.setItem('mcp_chats', JSON.stringify(chats));
-    }
+function saveChats() {
+  localStorage.setItem('mcp_chats', JSON.stringify(chats));
+}
 
-    function currentChat() {
-      return chats.find(c => c.id === activeChatId);
-    }
+function currentChat() {
+  return chats.find(c => c.id === activeChatId);
+}
 
-    // ── Models ────────────────────────────────────────────────────────────
-    async function loadModels() {
-      const sel = document.getElementById('model-select');
+// ── Models ────────────────────────────────────────────────────────────
+async function loadModels() {
+  const sel = document.getElementById('model-select');
+  try {
+    const r = await apiFetch('/ollama/models');
+    const d = await r.json();
+    sel.innerHTML = d.models.length
+      ? d.models.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('')
+      : '<option value="">No models found</option>';
+  } catch {
+    sel.innerHTML = '<option value="llama3">llama3 (default)</option>';
+  }
+}
+
+// ── Servers ───────────────────────────────────────────────────────────
+async function loadServers() {
+  try {
+    const r = await apiFetch('/mcp-servers');
+    servers = await r.json();
+  } catch { servers = []; }
+}
+
+// ── Tool selection ────────────────────────────────────────────────────
+function setActiveTool(name, save = true) {
+  activeTool = name;
+  document.getElementById('active-tool-bar').classList.add('visible');
+  document.getElementById('tool-pill-name').textContent = name;
+  document.getElementById('active-tool-badge').style.display = 'flex';
+  document.getElementById('active-tool-name').textContent = name;
+  if (save && currentChat()) {
+    currentChat().tool = name;
+    saveChats();
+  }
+}
+
+function clearTool(save = true) {
+  activeTool = null;
+  document.getElementById('active-tool-bar').classList.remove('visible');
+  document.getElementById('active-tool-badge').style.display = 'none';
+  if (save && currentChat()) {
+    currentChat().tool = null;
+    saveChats();
+  }
+}
+
+// ── Send message  (agentic loop) ──────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!activeChatId) newChat();
+  const chat = currentChat();
+
+  const es = document.getElementById('empty-state');
+  if (es) es.remove();
+
+  if (!chat.messages.length) {
+    chat.title = text.slice(0, 40) + (text.length > 40 ? '…' : '');
+    document.getElementById('chat-title').textContent = chat.title;
+    renderChatList();
+  }
+
+  const userMsg = { role: 'user', content: text };
+  chat.messages.push(userMsg);
+  saveChats();
+  renderMessage(userMsg, false);
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  scrollToBottom();
+
+  const model = document.getElementById('model-select').value || 'llama3';
+
+  // Build history excluding the just-added user message (backend appends it)
+  const historyForBackend = () => chat.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+
+  const typingEl = addTypingIndicator();
+
+  try {
+    // ── Step 1: Ask Ollama (non-streaming) what to do ─────────────────
+    //   If no tool active → skip to streaming directly.
+    //   If tool active → check if model wants to call it.
+    let toolResultText = null;
+    let toolCallEl = null;
+
+    if (activeTool) {
+      let planResp;
       try {
-        const r = await apiFetch('/ollama/models');
-        const d = await r.json();
-        sel.innerHTML = d.models.length
-          ? d.models.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('')
-          : '<option value="">No models found</option>';
-      } catch {
-        sel.innerHTML = '<option value="llama3">llama3 (default)</option>';
+        planResp = await apiFetch('/ollama/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            model,
+            chat_history: historyForBackend(),
+            chat_message: text,
+            stream: false,
+            tool: activeTool
+          })
+        });
+      } catch(e) {
+        typingEl.remove();
+        throw e;
       }
-    }
+      const plan = await planResp.json();
+      const planText = (plan?.message?.content || '').trim();
 
-    // ── Servers ───────────────────────────────────────────────────────────
-    async function loadServers() {
-      try {
-        const r = await apiFetch('/mcp-servers');
-        servers = await r.json();
-      } catch { servers = []; }
-    }
+      // ── Step 2: Detect if model emitted a tool_call JSON ──────────────
+      const toolCallMatch = planText.match(/\{[\s\S]*"tool_call"\s*:\s*true[\s\S]*\}/);
+      if (toolCallMatch) {
+        let toolCall;
+        try { toolCall = JSON.parse(toolCallMatch[0]); } catch { toolCall = null; }
 
-    // ── Tool selection ────────────────────────────────────────────────────
-    function setActiveTool(name, save = true) {
-      activeTool = name;
-      document.getElementById('active-tool-bar').classList.add('visible');
-      document.getElementById('tool-pill-name').textContent = name;
-      document.getElementById('active-tool-badge').style.display = 'flex';
-      document.getElementById('active-tool-name').textContent = name;
-      if (save && currentChat()) {
-        currentChat().tool = name;
-        saveChats();
-      }
-    }
-
-    function clearTool(save = true) {
-      activeTool = null;
-      document.getElementById('active-tool-bar').classList.remove('visible');
-      document.getElementById('active-tool-badge').style.display = 'none';
-      if (save && currentChat()) {
-        currentChat().tool = null;
-        saveChats();
-      }
-    }
-
-    // ── Send message  (agentic loop) ──────────────────────────────────────
-    async function sendMessage() {
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text) return;
-
-      if (!activeChatId) newChat();
-      const chat = currentChat();
-
-      const es = document.getElementById('empty-state');
-      if (es) es.remove();
-
-      if (!chat.messages.length) {
-        chat.title = text.slice(0, 40) + (text.length > 40 ? '…' : '');
-        document.getElementById('chat-title').textContent = chat.title;
-        renderChatList();
-      }
-
-      const userMsg = { role: 'user', content: text };
-      chat.messages.push(userMsg);
-      saveChats();
-      renderMessage(userMsg, false);
-
-      input.value = '';
-      input.style.height = 'auto';
-      document.getElementById('send-btn').disabled = true;
-      scrollToBottom();
-
-      const model = document.getElementById('model-select').value || 'llama3';
-
-      // Build history excluding the just-added user message (backend appends it)
-      const historyForBackend = () => chat.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
-
-      const typingEl = addTypingIndicator();
-
-      try {
-        // ── Step 1: Ask Ollama (non-streaming) what to do ─────────────────
-        //   If no tool active → skip to streaming directly.
-        //   If tool active → check if model wants to call it.
-        let toolResultText = null;
-        let toolCallEl = null;
-
-        if (activeTool) {
-          let planResp;
-          try {
-            planResp = await apiFetch('/ollama/chat', {
-              method: 'POST',
-              body: JSON.stringify({
-                model,
-                chat_history: historyForBackend(),
-                chat_message: text,
-                stream: false,
-                tool: activeTool
-              })
-            });
-          } catch (e) {
-            typingEl.remove();
-            throw e;
-          }
-          const plan = await planResp.json();
-          const planText = (plan?.message?.content || '').trim();
-
-          // ── Step 2: Detect if model emitted a tool_call JSON ──────────────
-          const toolCallMatch = planText.match(/\{[\s\S]*"tool_call"\s*:\s*true[\s\S]*\}/);
-          if (toolCallMatch) {
-            let toolCall;
-            try { toolCall = JSON.parse(toolCallMatch[0]); } catch { toolCall = null; }
-
-            if (toolCall && toolCall.tool_call) {
-              // Show "calling tool" indicator
-              typingEl.remove();
-              toolCallEl = addToolCall(activeTool, toolCall.action);
-              scrollToBottom();
-
-              // ── Step 3: Actually call the MCP tool ──────────────────────
-              let toolResult;
-              try {
-                const callResp = await apiFetch(`/mcp_servers/${encodeURIComponent(activeTool)}/call`, {
-                  method: 'POST',
-                  body: JSON.stringify({ action: toolCall.action, params: toolCall.params || {} })
-                });
-                toolResult = await callResp.json();
-              } catch (e) {
-                markToolError(toolCallEl, e.message);
-                toolResult = { error: e.message };
-              }
-
-              markToolDone(toolCallEl);
-
-              // Show inline tool result card
-              const resultText = JSON.stringify(toolResult.results || toolResult, null, 2);
-              addToolResult(`${activeTool} → ${toolCall.action}`, resultText);
-
-              // Build a clean, concise summary — raw JSON overwhelms small models
-              const toolSummary = buildToolSummary(toolResult, toolCall.action, activeTool);
-
-              // Store in history so follow-up prompts ("make a chart", "analyse this") work
-              const toolMsg = { role: 'user', content: toolSummary };
-              chat.messages.push(toolMsg);
-              saveChats();
-
-              // Add typing indicator for the summary response
-              const typingEl2 = addTypingIndicator();
-
-              // ── Step 4: Ask Ollama to present the result cleanly (streaming) ─
-              await streamSummarizePass(model, chat, typingEl2, toolSummary);
-              saveChats();
-              scrollToBottom();
-              return;
-            }
-          }
-
-          // Model decided no tool call needed — stream its plain response
+        if (toolCall && toolCall.tool_call) {
+          // Show "calling tool" indicator
           typingEl.remove();
-          const typingEl3 = addTypingIndicator();
-          // Inject plan text as if it were the streamed response so we don't
-          // re-ask — just render what the model already said.
-          typingEl3.remove();
-          await renderStreamedText(planText, chat);
+          toolCallEl = addToolCall(activeTool, toolCall.action);
+          scrollToBottom();
+
+          // ── Step 3: Actually call the MCP tool ──────────────────────
+          let toolResult;
+          try {
+            const callResp = await apiFetch(`/mcp_servers/${encodeURIComponent(activeTool)}/call`, {
+              method: 'POST',
+              body: JSON.stringify({ action: toolCall.action, params: toolCall.params || {} })
+            });
+            toolResult = await callResp.json();
+          } catch(e) {
+            markToolError(toolCallEl, e.message);
+            toolResult = { error: e.message };
+          }
+
+          markToolDone(toolCallEl);
+
+          // Show inline tool result card
+          const resultText = JSON.stringify(toolResult.results || toolResult, null, 2);
+          addToolResult(`${activeTool} → ${toolCall.action}`, resultText);
+
+          // Build a clean, concise summary — raw JSON overwhelms small models
+          const toolSummary = buildToolSummary(toolResult, toolCall.action, activeTool);
+
+          // Store in history so follow-up prompts ("make a chart", "analyse this") work
+          const toolMsg = { role: 'user', content: toolSummary };
+          chat.messages.push(toolMsg);
+          saveChats();
+
+          // Add typing indicator for the summary response
+          const typingEl2 = addTypingIndicator();
+
+          // ── Step 4: Ask Ollama to present the result cleanly (streaming) ─
+          await streamSummarizePass(model, chat, typingEl2, toolSummary);
           saveChats();
           scrollToBottom();
           return;
         }
-
-        // ── No tool active: straight streaming chat ────────────────────────
-        typingEl.remove();
-        const typingEl4 = addTypingIndicator();
-        await streamOllamaResponse(model, chat, typingEl4);
-        saveChats();
-
-      } catch (err) {
-        const errMsg = { role: 'assistant', content: `**Error:** ${err.message}` };
-        chat.messages.push(errMsg);
-        renderMessage(errMsg, false);
-        saveChats();
       }
+
+      // Model decided no tool call needed — stream its plain response
+      typingEl.remove();
+      const typingEl3 = addTypingIndicator();
+      // Inject plan text as if it were the streamed response so we don't
+      // re-ask — just render what the model already said.
+      typingEl3.remove();
+      await renderStreamedText(planText, chat);
+      saveChats();
       scrollToBottom();
+      return;
     }
 
-    // ── Build a clean human-readable summary of tool results ─────────────
-    function buildToolSummary(toolResult, action, toolName) {
-      const results = toolResult.results || [];
+    // ── No tool active: straight streaming chat ────────────────────────
+    typingEl.remove();
+    const typingEl4 = addTypingIndicator();
+    await streamOllamaResponse(model, chat, typingEl4);
+    saveChats();
 
-      // GitHub: list_repos → extract name, description, language, stars
-      if (action === 'list_repos' && Array.isArray(results)) {
-        const repos = results.flatMap(r => Array.isArray(r?.data) ? r.data : (r?.data ? [r.data] : []));
-        if (repos.length) {
-          const lines = repos.slice(0, 30).map(r =>
-            `- ${r.full_name || r.name}: ${r.description || 'no description'} [${r.language || '?'}, ★${r.stargazers_count ?? 0}]`
-          );
-          return `Tool "${toolName}" returned ${repos.length} repositories:\n${lines.join('\n')}\n\nPlease present these repos clearly to the user.`;
-        }
-      }
+  } catch (err) {
+    const errMsg = { role: 'assistant', content: `**Error:** ${err.message}` };
+    chat.messages.push(errMsg);
+    renderMessage(errMsg, false);
+    saveChats();
+  }
+  scrollToBottom();
+}
 
-      // GitHub: get_repo, get_issue, get_pr → single object
-      if (['get_repo', 'get_issue', 'get_pr'].includes(action) && results.length) {
-        const d = results[0]?.data;
-        if (d) return `Tool "${toolName}" (${action}) returned:\n${JSON.stringify(d, null, 2).slice(0, 2000)}\n\nSummarise this for the user.`;
-      }
+// ── Build a clean human-readable summary of tool results ─────────────
+function buildToolSummary(toolResult, action, toolName) {
+  const results = toolResult.results || [];
 
-      // GitHub: list_issues, list_prs, list_branches, list_commits
-      if (['list_issues', 'list_prs', 'list_branches', 'list_commits'].includes(action) && results.length) {
-        const items = results[0]?.data;
-        if (Array.isArray(items)) {
-          const lines = items.slice(0, 20).map((it, i) =>
-            `${i + 1}. ${it.title || it.name || it.sha?.slice(0, 7) || JSON.stringify(it).slice(0, 80)}`
-          );
-          return `Tool "${toolName}" (${action}) returned ${items.length} items:\n${lines.join('\n')}\n\nPresent these clearly to the user.`;
-        }
-      }
-
-      // Slack: list_channels
-      if (action === 'list_channels' && results.length) {
-        const channels = results[0]?.data?.channels || [];
-        if (channels.length) {
-          const lines = channels.slice(0, 30).map(c => `- #${c.name}: ${c.topic?.value || c.purpose?.value || 'no topic'} (${c.num_members ?? '?'} members)`);
-          return `Tool "${toolName}" returned ${channels.length} Slack channels:\n${lines.join('\n')}\n\nPresent these to the user.`;
-        }
-      }
-
-      // Slack: get_messages
-      if (action === 'get_messages' && results.length) {
-        const msgs = results[0]?.data?.messages || [];
-        if (msgs.length) {
-          const lines = msgs.slice(0, 20).map(m => `- ${m.text?.slice(0, 120) || '[attachment]'}`);
-          return `Tool "${toolName}" returned recent Slack messages:\n${lines.join('\n')}\n\nSummarise these for the user.`;
-        }
-      }
-
-      // Gmail: list_messages
-      if (action === 'list_messages' && results.length) {
-        const msgs = results[0]?.data?.messages || [];
-        return `Tool "${toolName}" found ${msgs.length} Gmail messages (IDs: ${msgs.slice(0, 5).map(m => m.id).join(', ')}). Tell the user how many emails were found and ask if they want to open a specific one.`;
-      }
-
-      // Fallback: trim raw JSON to 1500 chars so small models don't choke
-      const raw = JSON.stringify(results, null, 2);
-      const trimmed = raw.length > 1500 ? raw.slice(0, 1500) + '\n...(truncated)' : raw;
-      return `Tool "${toolName}" (${action}) returned data:\n${trimmed}\n\nSummarise this for the user clearly.`;
+  // GitHub: list_repos → extract name, description, language, stars
+  if (action === 'list_repos' && Array.isArray(results)) {
+    const repos = results.flatMap(r => Array.isArray(r?.data) ? r.data : (r?.data ? [r.data] : []));
+    if (repos.length) {
+      const lines = repos.slice(0, 30).map(r =>
+        `- ${r.full_name || r.name}: ${r.description || 'no description'} [${r.language || '?'}, ★${r.stargazers_count ?? 0}]`
+      );
+      return `Tool "${toolName}" returned ${repos.length} repositories:\n${lines.join('\n')}\n\nPlease present these repos clearly to the user.`;
     }
+  }
 
-    // ── Summarize pass: plain chat, no tool system prompt ─────────────────
-    async function streamSummarizePass(model, chat, typingEl, toolSummary) {
-      // Send only the tool summary as a fresh user message — don't replay full
-      // history which may confuse small models. The tool summary is self-contained.
-      const resp = await fetch(API.replace(/\/$/, '') + '/ollama/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          chat_history: [],          // clean slate for the summarize pass
-          chat_message: toolSummary, // the clean summary instruction
-          stream: true
-          // no tool: — no tool system prompt here, just normal assistant
-        })
-      });
+  // GitHub: get_repo, get_issue, get_pr → single object
+  if (['get_repo','get_issue','get_pr'].includes(action) && results.length) {
+    const d = results[0]?.data;
+    if (d) return `Tool "${toolName}" (${action}) returned:\n${JSON.stringify(d, null, 2).slice(0, 2000)}\n\nSummarise this for the user.`;
+  }
 
-      if (typingEl) typingEl.remove();
-      if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
-
-      const assistantMsg = { role: 'assistant', content: '' };
-      chat.messages.push(assistantMsg);
-      const msgEl = addAssistantBubble();
-      const contentEl = msgEl.querySelector('.msg-bubble');
-
-      await consumeStream(resp, (token) => {
-        assistantMsg.content += token;
-        renderBubble(contentEl, assistantMsg.content);
-      });
-
-      await renderRichContent(contentEl);
+  // GitHub: list_issues, list_prs, list_branches, list_commits
+  if (['list_issues','list_prs','list_branches','list_commits'].includes(action) && results.length) {
+    const items = results[0]?.data;
+    if (Array.isArray(items)) {
+      const lines = items.slice(0, 20).map((it, i) =>
+        `${i+1}. ${it.title || it.name || it.sha?.slice(0,7) || JSON.stringify(it).slice(0,80)}`
+      );
+      return `Tool "${toolName}" (${action}) returned ${items.length} items:\n${lines.join('\n')}\n\nPresent these clearly to the user.`;
     }
+  }
 
-    // ── Stream Ollama response and render it ───────────────────────────────
-    async function streamOllamaResponse(model, chat, typingEl) {
-      const resp = await fetch(API.replace(/\/$/, '') + '/ollama/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          chat_history: chat.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
-          chat_message: chat.messages[chat.messages.length - 1].content,
-          stream: true,
-          tool: undefined   // summarise pass never re-injects tool system prompt
-        })
-      });
-
-      if (typingEl) typingEl.remove();
-      if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
-
-      const assistantMsg = { role: 'assistant', content: '' };
-      chat.messages.push(assistantMsg);
-      const msgEl = addAssistantBubble();
-      const contentEl = msgEl.querySelector('.msg-bubble');
-
-      await consumeStream(resp, (token) => {
-        assistantMsg.content += token;
-        renderBubble(contentEl, assistantMsg.content);
-      });
+  // Slack: list_channels
+  if (action === 'list_channels' && results.length) {
+    const channels = results[0]?.data?.channels || [];
+    if (channels.length) {
+      const lines = channels.slice(0, 30).map(c => `- #${c.name}: ${c.topic?.value || c.purpose?.value || 'no topic'} (${c.num_members ?? '?'} members)`);
+      return `Tool "${toolName}" returned ${channels.length} Slack channels:\n${lines.join('\n')}\n\nPresent these to the user.`;
     }
+  }
 
-    // ── Render a known text directly (non-stream path) ────────────────────
-    async function renderStreamedText(text, chat) {
-      const assistantMsg = { role: 'assistant', content: text };
-      chat.messages.push(assistantMsg);
-      const msgEl = addAssistantBubble();
-      const contentEl = msgEl.querySelector('.msg-bubble');
-      renderBubble(contentEl, text);
-      await renderRichContent(contentEl);
+  // Slack: get_messages
+  if (action === 'get_messages' && results.length) {
+    const msgs = results[0]?.data?.messages || [];
+    if (msgs.length) {
+      const lines = msgs.slice(0, 20).map(m => `- ${m.text?.slice(0,120) || '[attachment]'}`);
+      return `Tool "${toolName}" returned recent Slack messages:\n${lines.join('\n')}\n\nSummarise these for the user.`;
     }
+  }
 
-    // ── Consume an SSE stream, call onToken for each content token ─────────
-    async function consumeStream(resp, onToken) {
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+  // Gmail: list_messages
+  if (action === 'list_messages' && results.length) {
+    const msgs = results[0]?.data?.messages || [];
+    return `Tool "${toolName}" found ${msgs.length} Gmail messages (IDs: ${msgs.slice(0,5).map(m=>m.id).join(', ')}). Tell the user how many emails were found and ask if they want to open a specific one.`;
+  }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
+  // Fallback: trim raw JSON to 1500 chars so small models don't choke
+  const raw = JSON.stringify(results, null, 2);
+  const trimmed = raw.length > 1500 ? raw.slice(0, 1500) + '\n...(truncated)' : raw;
+  return `Tool "${toolName}" (${action}) returned data:\n${trimmed}\n\nSummarise this for the user clearly.`;
+}
 
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          try {
-            const data = JSON.parse(line.slice(5).trim());
-            if (data.status === 'done') continue;
-            const token = data?.message?.content || '';
-            if (token) onToken(token);
-          } catch { }
-        }
-      }
+// ── Summarize pass: plain chat, no tool system prompt ─────────────────
+async function streamSummarizePass(model, chat, typingEl, toolSummary) {
+  // Send only the tool summary as a fresh user message — don't replay full
+  // history which may confuse small models. The tool summary is self-contained.
+  const resp = await fetch(API.replace(/\/$/, '') + '/ollama/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      chat_history: [],          // clean slate for the summarize pass
+      chat_message: toolSummary, // the clean summary instruction
+      stream: true
+      // no tool: — no tool system prompt here, just normal assistant
+    })
+  });
+
+  if (typingEl) typingEl.remove();
+  if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
+
+  const assistantMsg = { role: 'assistant', content: '' };
+  chat.messages.push(assistantMsg);
+  const msgEl = addAssistantBubble();
+  const contentEl = msgEl.querySelector('.msg-bubble');
+
+  await consumeStream(resp, (token) => {
+    assistantMsg.content += token;
+    renderBubble(contentEl, assistantMsg.content);
+  });
+
+  await renderRichContent(contentEl);
+}
+
+// ── Stream Ollama response and render it ───────────────────────────────
+async function streamOllamaResponse(model, chat, typingEl) {
+  const resp = await fetch(API.replace(/\/$/, '') + '/ollama/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      chat_history: chat.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
+      chat_message: chat.messages[chat.messages.length - 1].content,
+      stream: true,
+      tool: undefined   // summarise pass never re-injects tool system prompt
+    })
+  });
+
+  if (typingEl) typingEl.remove();
+  if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
+
+  const assistantMsg = { role: 'assistant', content: '' };
+  chat.messages.push(assistantMsg);
+  const msgEl = addAssistantBubble();
+  const contentEl = msgEl.querySelector('.msg-bubble');
+
+  await consumeStream(resp, (token) => {
+    assistantMsg.content += token;
+    renderBubble(contentEl, assistantMsg.content);
+  });
+}
+
+// ── Render a known text directly (non-stream path) ────────────────────
+async function renderStreamedText(text, chat) {
+  const assistantMsg = { role: 'assistant', content: text };
+  chat.messages.push(assistantMsg);
+  const msgEl = addAssistantBubble();
+  const contentEl = msgEl.querySelector('.msg-bubble');
+  renderBubble(contentEl, text);
+  await renderRichContent(contentEl);
+}
+
+// ── Consume an SSE stream, call onToken for each content token ─────────
+async function consumeStream(resp, onToken) {
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      try {
+        const data = JSON.parse(line.slice(5).trim());
+        if (data.status === 'done') continue;
+        const token = data?.message?.content || '';
+        if (token) onToken(token);
+      } catch {}
     }
+  }
+}
 
-    // ── Render bubble: extract <think> tags, then markdown ────────────────
-    function renderBubble(el, rawText) {
-      const { thinking, visible } = extractThink(rawText);
+// ── Render bubble: extract <think> tags, then markdown ────────────────
+function renderBubble(el, rawText) {
+  const { thinking, visible } = extractThink(rawText);
 
-      let html = '';
+  let html = '';
 
-      if (thinking) {
-        const uid = 'think-' + Math.abs(hashStr(thinking)).toString(36);
-        const existing = el.querySelector(`[data-think-id="${uid}"]`);
-        if (!existing) {
-          html += `<div class="think-block" data-think-id="${uid}">
+  if (thinking) {
+    const uid = 'think-' + Math.abs(hashStr(thinking)).toString(36);
+    const existing = el.querySelector(`[data-think-id="${uid}"]`);
+    if (!existing) {
+      html += `<div class="think-block" data-think-id="${uid}">
   <button class="think-toggle" onclick="toggleThink('${uid}')">
     <span class="think-spinner"></span>
     <span class="think-label">Thinking…</span>
@@ -2265,180 +1600,180 @@
   </button>
   <div class="think-content" id="think-${uid}">${renderMarkdown(thinking)}</div>
 </div>`;
-        } else {
-          // Update existing think block content in place
-          const contentEl = document.getElementById('think-' + uid);
-          if (contentEl) contentEl.innerHTML = renderMarkdown(thinking);
-        }
-      }
-
-      html += renderMarkdown(visible);
-      el.innerHTML = html;
-      renderRichContent(el);
-      scrollToBottom();
+    } else {
+      // Update existing think block content in place
+      const contentEl = document.getElementById('think-' + uid);
+      if (contentEl) contentEl.innerHTML = renderMarkdown(thinking);
     }
+  }
 
-    function extractThink(text) {
-      // Extract <think>...</think> (may be partial during streaming)
-      const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
-      if (thinkMatch) {
-        const thinking = thinkMatch[1].trim();
-        const visible = text.replace(/<think>[\s\S]*?<\/think>/, '').trim();
-        return { thinking, visible };
-      }
-      // Partial think tag still streaming
-      const openIdx = text.indexOf('<think>');
-      if (openIdx !== -1 && !text.includes('</think>')) {
-        const thinking = text.slice(openIdx + 7).trim();
-        const visible = text.slice(0, openIdx).trim();
-        return { thinking, visible };
-      }
-      return { thinking: null, visible: text };
-    }
+  html += renderMarkdown(visible);
+  el.innerHTML = html;
+  renderRichContent(el);
+  scrollToBottom();
+}
 
-    function toggleThink(uid) {
-      const block = document.querySelector(`[data-think-id="${uid}"]`);
-      if (!block) return;
-      block.classList.toggle('open');
-    }
+function extractThink(text) {
+  // Extract <think>...</think> (may be partial during streaming)
+  const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
+  if (thinkMatch) {
+    const thinking = thinkMatch[1].trim();
+    const visible  = text.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+    return { thinking, visible };
+  }
+  // Partial think tag still streaming
+  const openIdx = text.indexOf('<think>');
+  if (openIdx !== -1 && !text.includes('</think>')) {
+    const thinking = text.slice(openIdx + 7).trim();
+    const visible  = text.slice(0, openIdx).trim();
+    return { thinking, visible };
+  }
+  return { thinking: null, visible: text };
+}
 
-    function hashStr(s) {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-      return h;
-    }
+function toggleThink(uid) {
+  const block = document.querySelector(`[data-think-id="${uid}"]`);
+  if (!block) return;
+  block.classList.toggle('open');
+}
 
-    // ── Rendering helpers ─────────────────────────────────────────────────
-    function renderMessage(msg, scroll = true) {
-      const inner = document.getElementById('chat-inner');
-      const wrap = document.createElement('div');
-      wrap.className = `msg ${msg.role}`;
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  return h;
+}
 
-      if (msg.role === 'user') {
-        wrap.innerHTML = `<div class="msg-bubble">${escHtml(msg.content)}</div>`;
-      } else {
-        const bubble = document.createElement('div');
-        bubble.className = 'msg-bubble md-content';
-        bubble.innerHTML = renderMarkdown(msg.content);
-        wrap.appendChild(bubble);
-        setTimeout(() => renderRichContent(bubble), 100);
-      }
+// ── Rendering helpers ─────────────────────────────────────────────────
+function renderMessage(msg, scroll = true) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${msg.role}`;
 
-      inner.appendChild(wrap);
-      if (scroll) scrollToBottom();
-      return wrap;
-    }
+  if (msg.role === 'user') {
+    wrap.innerHTML = `<div class="msg-bubble">${escHtml(msg.content)}</div>`;
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble md-content';
+    bubble.innerHTML = renderMarkdown(msg.content);
+    wrap.appendChild(bubble);
+    setTimeout(() => renderRichContent(bubble), 100);
+  }
 
-    function addAssistantBubble() {
-      const inner = document.getElementById('chat-inner');
-      const wrap = document.createElement('div');
-      wrap.className = 'msg assistant';
-      const bubble = document.createElement('div');
-      bubble.className = 'msg-bubble md-content';
-      wrap.appendChild(bubble);
-      inner.appendChild(wrap);
-      return wrap;
-    }
+  inner.appendChild(wrap);
+  if (scroll) scrollToBottom();
+  return wrap;
+}
 
-    function addTypingIndicator() {
-      const inner = document.getElementById('chat-inner');
-      const wrap = document.createElement('div');
-      wrap.className = 'msg assistant';
-      wrap.innerHTML = `<div class="typing-indicator">
+function addAssistantBubble() {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble md-content';
+  wrap.appendChild(bubble);
+  inner.appendChild(wrap);
+  return wrap;
+}
+
+function addTypingIndicator() {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="typing-indicator">
     <div class="typing-dot"></div>
     <div class="typing-dot"></div>
     <div class="typing-dot"></div>
   </div>`;
-      inner.appendChild(wrap);
-      scrollToBottom();
-      return wrap;
-    }
+  inner.appendChild(wrap);
+  scrollToBottom();
+  return wrap;
+}
 
-    function addToolCall(toolName, action) {
-      const inner = document.getElementById('chat-inner');
-      const wrap = document.createElement('div');
-      wrap.className = 'msg assistant';
-      const label = action ? `${escHtml(toolName)} → ${escHtml(action)}` : escHtml(toolName);
-      wrap.innerHTML = `<div class="tool-call">
+function addToolCall(toolName, action) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  const label = action ? `${escHtml(toolName)} → ${escHtml(action)}` : escHtml(toolName);
+  wrap.innerHTML = `<div class="tool-call">
     <div class="tool-spinner"></div>
     <svg class="tool-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
     <svg class="tool-error-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
     <span class="tool-call-label">Calling ${label}</span>
   </div>`;
-      inner.appendChild(wrap);
-      scrollToBottom();
-      return wrap.querySelector('.tool-call');
-    }
+  inner.appendChild(wrap);
+  scrollToBottom();
+  return wrap.querySelector('.tool-call');
+}
 
-    function markToolDone(el) {
-      el.classList.add('done');
-      el.querySelector('.tool-call-label').textContent = el.querySelector('.tool-call-label').textContent.replace('Calling ', '');
-    }
+function markToolDone(el) {
+  el.classList.add('done');
+  el.querySelector('.tool-call-label').textContent = el.querySelector('.tool-call-label').textContent.replace('Calling ', '');
+}
 
-    function markToolError(el, msg) {
-      el.classList.add('error');
-      el.querySelector('.tool-call-label').textContent = `Error: ${msg}`;
-    }
+function markToolError(el, msg) {
+  el.classList.add('error');
+  el.querySelector('.tool-call-label').textContent = `Error: ${msg}`;
+}
 
-    function addToolResult(label, data) {
-      const inner = document.getElementById('chat-inner');
-      const wrap = document.createElement('div');
-      wrap.className = 'msg assistant';
-      wrap.innerHTML = `<div class="tool-result">
+function addToolResult(label, data) {
+  const inner = document.getElementById('chat-inner');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="tool-result">
     <div class="tool-result-header">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       ${escHtml(label)}
     </div>
     <div class="tool-result-body">${escHtml(typeof data === 'string' ? data : JSON.stringify(data, null, 2))}</div>
   </div>`;
-      inner.appendChild(wrap);
-      scrollToBottom();
+  inner.appendChild(wrap);
+  scrollToBottom();
+}
+
+// ── Markdown + Mermaid + HTML preview ────────────────────────────────
+
+// Languages that get a live preview iframe instead of (or alongside) a code block
+const PREVIEW_LANGS = new Set(['html', 'svg', 'chartjs', 'chart']);
+
+// Decode HTML entities back to raw text (needed when extracting from innerHTML)
+function decodeEntities(str) {
+  const ta = document.createElement('textarea');
+  ta.innerHTML = str;
+  return ta.value;
+}
+
+function renderMarkdown(text) {
+  // 1. Pull out all fenced code blocks BEFORE marked touches them
+  //    so we can handle mermaid / html ourselves.
+  const BLOCKS = [];   // { type: 'mermaid'|'preview'|'code', lang, raw }
+
+  const processed = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const l = lang.toLowerCase();
+    let type = 'code';
+    if (l === 'mermaid') type = 'mermaid';
+    else if (PREVIEW_LANGS.has(l)) type = 'preview';
+    const i = BLOCKS.length;
+    BLOCKS.push({ type, lang: l, raw: code });
+    return `BLOCK_PH_${i}_END`;
+  });
+
+  // 2. Run marked on the remaining text (no code fences left)
+  let html = marked.parse(processed);
+
+  // 3. Restore each placeholder
+  html = html.replace(/BLOCK_PH_(\d+)_END/g, (_, idx) => {
+    const b = BLOCKS[parseInt(idx)];
+    if (!b) return '';
+
+    if (b.type === 'mermaid') {
+      // Store raw code in data-attr so renderMermaidInEl can read it safely
+      return `<div class="mermaid-wrap"><div class="mermaid" data-code="${encodeURIComponent(b.raw)}"></div></div>`;
     }
 
-    // ── Markdown + Mermaid + HTML preview ────────────────────────────────
-
-    // Languages that get a live preview iframe instead of (or alongside) a code block
-    const PREVIEW_LANGS = new Set(['html', 'svg', 'chartjs', 'chart']);
-
-    // Decode HTML entities back to raw text (needed when extracting from innerHTML)
-    function decodeEntities(str) {
-      const ta = document.createElement('textarea');
-      ta.innerHTML = str;
-      return ta.value;
-    }
-
-    function renderMarkdown(text) {
-      // 1. Pull out all fenced code blocks BEFORE marked touches them
-      //    so we can handle mermaid / html ourselves.
-      const BLOCKS = [];   // { type: 'mermaid'|'preview'|'code', lang, raw }
-
-      const processed = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-        const l = lang.toLowerCase();
-        let type = 'code';
-        if (l === 'mermaid') type = 'mermaid';
-        else if (PREVIEW_LANGS.has(l)) type = 'preview';
-        const i = BLOCKS.length;
-        BLOCKS.push({ type, lang: l, raw: code });
-        return `BLOCK_PH_${i}_END`;
-      });
-
-      // 2. Run marked on the remaining text (no code fences left)
-      let html = marked.parse(processed);
-
-      // 3. Restore each placeholder
-      html = html.replace(/BLOCK_PH_(\d+)_END/g, (_, idx) => {
-        const b = BLOCKS[parseInt(idx)];
-        if (!b) return '';
-
-        if (b.type === 'mermaid') {
-          // Store raw code in data-attr so renderMermaidInEl can read it safely
-          return `<div class="mermaid-wrap"><div class="mermaid" data-code="${encodeURIComponent(b.raw)}"></div></div>`;
-        }
-
-        if (b.type === 'preview') {
-          const uid = 'pv-' + Math.random().toString(36).slice(2);
-          const escaped = escHtml(b.raw);
-          return `<div class="preview-block" id="${uid}">
+    if (b.type === 'preview') {
+      const uid = 'pv-' + Math.random().toString(36).slice(2);
+      const escaped = escHtml(b.raw);
+      return `<div class="preview-block" id="${uid}">
   <div class="preview-toolbar">
     <span>${b.lang}</span>
     <div class="preview-toolbar-right">
@@ -2457,48 +1792,48 @@
   </div>
   <script data-preview="${uid}">${encodeURIComponent(b.raw)}<\/script>
 </div>`;
-        }
-
-        // plain code block with copy button
-        const escaped = escHtml(b.raw);
-        return `<div class="code-header"><span>${b.lang}</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
-<pre><code class="language-${b.lang}">${escaped}</code></pre>`;
-      });
-
-      return html;
     }
 
-    // Called after innerHTML is set — renders mermaid and injects iframe srcdoc
-    async function renderRichContent(el) {
-      // ── Mermaid ──────────────────────────────────────────────────────
-      const mermaidDivs = el.querySelectorAll('.mermaid[data-code]:not([data-processed])');
-      for (const div of mermaidDivs) {
-        div.setAttribute('data-processed', '1');
-        const code = decodeURIComponent(div.getAttribute('data-code'));
-        try {
-          const id = 'mmd-' + Math.random().toString(36).slice(2);
-          const { svg } = await mermaid.render(id, code);
-          div.innerHTML = svg;
-        } catch (e) {
-          div.innerHTML = `<span style="color:var(--danger);font-size:12px;font-family:var(--font-mono)">Mermaid parse error: ${escHtml(e.message)}</span>`;
-        }
-      }
+    // plain code block with copy button
+    const escaped = escHtml(b.raw);
+    return `<div class="code-header"><span>${b.lang}</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+<pre><code class="language-${b.lang}">${escaped}</code></pre>`;
+  });
 
-      // ── HTML / Chart previews ─────────────────────────────────────────
-      const scripts = el.querySelectorAll('script[data-preview]:not([data-injected])');
-      for (const sc of scripts) {
-        sc.setAttribute('data-injected', '1');
-        const uid = sc.getAttribute('data-preview');
-        const frame = document.getElementById(uid + '-frame');
-        if (!frame) continue;
-        const raw = decodeURIComponent(sc.textContent.trim());
-        // Auto-wrap bare HTML snippets that lack <html> so they always render nicely
-        // Build srcdoc with allow-scripts only (no allow-same-origin = safe sandbox).
-        // CDN scripts won't load inside srcdoc without same-origin, so we inject
-        // a lightweight Chart.js-compatible shim for bar/line/pie/doughnut charts.
-        const isFullDoc = raw.trimStart().startsWith('<!') || raw.trimStart().startsWith('<html');
-        const chartShim = getChartShim();
-        const fullHtml = isFullDoc ? raw : `<!DOCTYPE html><html><head>
+  return html;
+}
+
+// Called after innerHTML is set — renders mermaid and injects iframe srcdoc
+async function renderRichContent(el) {
+  // ── Mermaid ──────────────────────────────────────────────────────
+  const mermaidDivs = el.querySelectorAll('.mermaid[data-code]:not([data-processed])');
+  for (const div of mermaidDivs) {
+    div.setAttribute('data-processed', '1');
+    const code = decodeURIComponent(div.getAttribute('data-code'));
+    try {
+      const id = 'mmd-' + Math.random().toString(36).slice(2);
+      const { svg } = await mermaid.render(id, code);
+      div.innerHTML = svg;
+    } catch (e) {
+      div.innerHTML = `<span style="color:var(--danger);font-size:12px;font-family:var(--font-mono)">Mermaid parse error: ${escHtml(e.message)}</span>`;
+    }
+  }
+
+  // ── HTML / Chart previews ─────────────────────────────────────────
+  const scripts = el.querySelectorAll('script[data-preview]:not([data-injected])');
+  for (const sc of scripts) {
+    sc.setAttribute('data-injected', '1');
+    const uid = sc.getAttribute('data-preview');
+    const frame = document.getElementById(uid + '-frame');
+    if (!frame) continue;
+    const raw = decodeURIComponent(sc.textContent.trim());
+    // Auto-wrap bare HTML snippets that lack <html> so they always render nicely
+    // Build srcdoc with allow-scripts only (no allow-same-origin = safe sandbox).
+    // CDN scripts won't load inside srcdoc without same-origin, so we inject
+    // a lightweight Chart.js-compatible shim for bar/line/pie/doughnut charts.
+    const isFullDoc = raw.trimStart().startsWith('<!') || raw.trimStart().startsWith('<html');
+    const chartShim = getChartShim();
+    const fullHtml = isFullDoc ? raw : `<!DOCTYPE html><html><head>
 <meta charset="utf-8"/>
 <style>
 body{margin:0;font-family:system-ui,sans-serif;background:#fff;padding:16px;box-sizing:border-box}
@@ -2510,69 +1845,69 @@ canvas{max-width:100%;display:block}*{box-sizing:border-box}
 function _rh(){var h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);window.parent.postMessage({type:'iframe-height',height:h,id:'\${uid}'},'*');}
 window.addEventListener('load',function(){_rh();setTimeout(_rh,200);setTimeout(_rh,600);});
 <\/script></body></html>`;
-        frame.srcdoc = fullHtml;
-      }
-    }
+    frame.srcdoc = fullHtml;
+  }
+}
 
-    function showPreview(uid, tab, btn) {
-      const iframeWrap = document.getElementById(uid + '-iframe');
-      const codeWrap = document.getElementById(uid + '-code');
-      const block = document.getElementById(uid);
-      block.querySelectorAll('.preview-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (tab === 'preview') {
-        iframeWrap.classList.remove('hidden');
-        codeWrap.classList.remove('visible');
-      } else {
-        iframeWrap.classList.add('hidden');
-        codeWrap.classList.add('visible');
-      }
-    }
+function showPreview(uid, tab, btn) {
+  const iframeWrap = document.getElementById(uid + '-iframe');
+  const codeWrap   = document.getElementById(uid + '-code');
+  const block      = document.getElementById(uid);
+  block.querySelectorAll('.preview-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab === 'preview') {
+    iframeWrap.classList.remove('hidden');
+    codeWrap.classList.remove('visible');
+  } else {
+    iframeWrap.classList.add('hidden');
+    codeWrap.classList.add('visible');
+  }
+}
 
-    function copyPreviewCode(uid) {
-      const sc = document.querySelector(`script[data-preview="${uid}"]`);
-      if (!sc) return;
-      const raw = decodeURIComponent(sc.textContent.trim());
-      navigator.clipboard.writeText(raw);
-    }
+function copyPreviewCode(uid) {
+  const sc = document.querySelector(`script[data-preview="${uid}"]`);
+  if (!sc) return;
+  const raw = decodeURIComponent(sc.textContent.trim());
+  navigator.clipboard.writeText(raw);
+}
 
-    function copyCode(btn) {
-      const pre = btn.closest('.code-header').nextElementSibling;
-      const code = pre ? pre.querySelector('code') : null;
-      if (!code) return;
-      navigator.clipboard.writeText(decodeEntities(code.textContent));
-      btn.textContent = 'copied!';
-      setTimeout(() => btn.textContent = 'copy', 1800);
-    }
+function copyCode(btn) {
+  const pre = btn.closest('.code-header').nextElementSibling;
+  const code = pre ? pre.querySelector('code') : null;
+  if (!code) return;
+  navigator.clipboard.writeText(decodeEntities(code.textContent));
+  btn.textContent = 'copied!';
+  setTimeout(() => btn.textContent = 'copy', 1800);
+}
 
-    // ── Panel ─────────────────────────────────────────────────────────────
-    let currentPanel = null;
+// ── Panel ─────────────────────────────────────────────────────────────
+let currentPanel = null;
 
-    function openPanel(type) {
-      currentPanel = type;
-      document.getElementById('panel-overlay').classList.add('open');
-      if (type === 'tools') renderToolsPanel();
-      else if (type === 'apps') renderAppsPanel();
-      else if (type === 'settings') renderSettingsPanel();
-    }
+function openPanel(type) {
+  currentPanel = type;
+  document.getElementById('panel-overlay').classList.add('open');
+  if (type === 'tools') renderToolsPanel();
+  else if (type === 'apps') renderAppsPanel();
+  else if (type === 'settings') renderSettingsPanel();
+}
 
-    function closePanel() {
-      document.getElementById('panel-overlay').classList.remove('open');
-    }
+function closePanel() {
+  document.getElementById('panel-overlay').classList.remove('open');
+}
 
-    function handleOverlayClick(e) {
-      if (e.target === document.getElementById('panel-overlay')) closePanel();
-    }
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('panel-overlay')) closePanel();
+}
 
-    // ── Tools panel ───────────────────────────────────────────────────────
-    function renderToolsPanel() {
-      document.getElementById('panel-title').textContent = 'Tools';
-      document.getElementById('panel-tabs').innerHTML = `
+// ── Tools panel ───────────────────────────────────────────────────────
+function renderToolsPanel() {
+  document.getElementById('panel-title').textContent = 'Tools';
+  document.getElementById('panel-tabs').innerHTML = `
     <div class="panel-tab active" data-target="tl-list" onclick="switchTab(this,'tl-list')">Your tools</div>
     <div class="panel-tab" data-target="tl-create" onclick="switchTab(this,'tl-create')">Create</div>`;
 
-      const body = document.getElementById('panel-body');
-      body.innerHTML = `
+  const body = document.getElementById('panel-body');
+  body.innerHTML = `
     <div id="tl-list">
       ${servers.length ? '' : '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">No tools yet. Create one!</p>'}
       ${servers.map(s => serverCard(s)).join('')}
@@ -2585,12 +1920,12 @@ window.addEventListener('load',function(){_rh();setTimeout(_rh,200);setTimeout(_
       </select>
       <div id="create-form-fields"></div>
     </div>`;
-      renderCreateForm();
-    }
+  renderCreateForm();
+}
 
-    function serverCard(s) {
-      const isActive = activeTool === s.name;
-      return `<div class="server-card" id="sc-${s.id}">
+function serverCard(s) {
+  const isActive = activeTool === s.name;
+  return `<div class="server-card" id="sc-${s.id}">
     <div class="server-card-top">
       <span class="server-type-badge badge-${s.server_type}">${s.server_type}</span>
       <span class="server-name">${escHtml(s.name)}</span>
@@ -2604,107 +1939,156 @@ window.addEventListener('load',function(){_rh();setTimeout(_rh,200);setTimeout(_
       <button class="del-btn" onclick="deleteServer(${s.id})">Delete</button>
     </div>
   </div>`;
-    }
+}
 
-    function renderCreateForm() {
-      const type = document.getElementById('create-type')?.value;
-      const container = document.getElementById('create-form-fields');
-      if (!container) return;
+function renderCreateForm() {
+  const type = document.getElementById('create-type')?.value;
+  const container = document.getElementById('create-form-fields');
+  if (!container) return;
 
-      const common = `
+  const common = `
     <div class="form-row"><label class="form-label">Name</label><input class="form-input" id="cf-name" placeholder="my-server" /></div>
     <div class="form-row"><label class="form-label">Description</label><input class="form-input" id="cf-desc" placeholder="Optional" /></div>`;
 
-      if (type === 'command') {
-        container.innerHTML = common + `
-      <div class="form-row"><label class="form-label">Command</label><input class="form-input" id="cf-cmd" placeholder="psql" /></div>
-      <div class="form-row"><label class="form-label">Args (comma-separated)</label><input class="form-input" id="cf-args" placeholder="-U postgres, -d mydb" /></div>
-      <div class="form-row"><label class="form-label">Idle timeout (seconds)</label><input class="form-input" type="number" id="cf-timeout" value="300" /></div>
+  if (type === 'command') {
+    container.innerHTML = common + `
+      <div class="form-row"><label class="form-label">Command</label><input class="form-input" id="cf-cmd" placeholder="curl" /></div>
+      <div class="form-row"><label class="form-label">Args (comma-separated)</label><input class="form-input" id="cf-args" placeholder="-X GET, https://api.example.com/data" /></div>
+      <div class="server-card" style="flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;margin-top:4px">
+        <div>
+          <div style="font-size:13px;font-weight:500">One-shot mode</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Run once per call, then exit (e.g. curl, scripts)</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer">
+          <input type="checkbox" id="cf-oneshot" checked style="opacity:0;width:0;height:0;position:absolute">
+          <span id="cf-oneshot-track" style="position:absolute;inset:0;border-radius:99px;background:var(--accent);transition:background .2s">
+            <span style="position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;transform:translateX(16px)" id="cf-oneshot-thumb"></span>
+          </span>
+        </label>
+      </div>
+      <div class="form-row" id="cf-timeout-row" style="opacity:0.4"><label class="form-label">Idle timeout (seconds) <span style="color:var(--text-muted)">keep-alive only</span></label><input class="form-input" type="number" id="cf-timeout" value="300" /></div>
       <button class="form-submit" onclick="createCommandServer()">Create command server</button>`;
-      } else if (type === 'rest_api') {
-        container.innerHTML = common + `
+    document.getElementById('cf-oneshot')?.addEventListener('change', function() {
+      document.getElementById('cf-timeout-row').style.opacity = this.checked ? '0.4' : '1';
+      document.getElementById('cf-oneshot-thumb').style.transform = this.checked ? 'translateX(16px)' : 'translateX(0)';
+    });
+  } else if (type === 'rest_api') {
+    container.innerHTML = common + `
       <div class="form-row"><label class="form-label">Host URL</label><input class="form-input" id="cf-host" placeholder="https://api.example.com" /></div>
-      <div class="form-row"><label class="form-label">Headers (JSON)</label><textarea class="form-input" id="cf-headers" rows="2" placeholder='{"Authorization":"Bearer ..."}'></textarea></div>
+      <div class="form-row"><label class="form-label">Headers (JSON)</label><textarea class="form-input" id="cf-headers" rows="2" placeholder='{"Authorization":"Bearer token"}'></textarea></div>
+      <div class="panel-section-label" style="margin-top:8px">Default endpoint (optional)</div>
+      <div style="display:flex;gap:6px">
+        <select class="form-select" id="cf-method" style="width:110px;flex-shrink:0">
+          <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+        </select>
+        <input class="form-input" id="cf-path" placeholder="/users/{id}" />
+      </div>
+      <div class="form-row"><label class="form-label">Query params (JSON) <span style="color:var(--text-muted)">?key=val</span></label><input class="form-input" id="cf-query" placeholder='{"date":"2024-01-01"}' /></div>
+      <div class="form-row"><label class="form-label">Path params (JSON) <span style="color:var(--text-muted)">/&#123;id&#125;</span></label><input class="form-input" id="cf-pathparams" placeholder='{"id":"42"}' /></div>
+      <div class="form-row"><label class="form-label">Body (JSON) <span style="color:var(--text-muted)">POST/PUT/PATCH</span></label><textarea class="form-input" id="cf-body" rows="2" placeholder='{"name":"John"}'></textarea></div>
       <button class="form-submit" onclick="createRestServer()">Create REST server</button>`;
-      }
-    }
+  }
+}
 
-    async function createCommandServer() {
-      const name = document.getElementById('cf-name').value.trim();
-      const cmd = document.getElementById('cf-cmd').value.trim();
-      clearFormError('tl-create');
-      if (!name || !cmd) return showFormError('tl-create', 'Name and command are required.');
-      const args = document.getElementById('cf-args').value.split(',').map(a => a.trim()).filter(Boolean);
-      const timeout = parseInt(document.getElementById('cf-timeout').value) || 300;
-      const desc = document.getElementById('cf-desc').value.trim();
-      const btn = document.querySelector('#tl-create .form-submit');
-      setBtnLoading(btn, true, 'Create command server');
-      try {
-        await apiFetch('/mcp-servers/command', {
-          method: 'POST',
-          body: JSON.stringify({ name, description: desc, command: cmd, args, idle_timeout: timeout })
-        });
-        await loadServers();
-        renderToolsPanel();
-        switchTabById('tl-list');
-      } catch (e) {
-        setBtnLoading(btn, false, 'Create command server');
-        showFormError('tl-create', e.message);
-      }
-    }
+async function createCommandServer() {
+  const name = document.getElementById('cf-name').value.trim();
+  const cmd  = document.getElementById('cf-cmd').value.trim();
+  clearFormError('tl-create');
+  if (!name || !cmd) return showFormError('tl-create', 'Name and command are required.');
+  const args    = document.getElementById('cf-args').value.split(',').map(a => a.trim()).filter(Boolean);
+  const timeout = parseInt(document.getElementById('cf-timeout').value) || 300;
+  const desc    = document.getElementById('cf-desc').value.trim();
+  const oneShot = document.getElementById('cf-oneshot')?.checked ?? true;
+  const btn = document.querySelector('#tl-create .form-submit');
+  setBtnLoading(btn, true, 'Create command server');
+  try {
+    await apiFetch('/mcp-servers/command', {
+      method: 'POST',
+      body: JSON.stringify({ name, description: desc, command: cmd, args, one_shot: oneShot, idle_timeout: timeout })
+    });
+    await loadServers();
+    renderToolsPanel();
+    switchTabById('tl-list');
+  } catch(e) {
+    setBtnLoading(btn, false, 'Create command server');
+    showFormError('tl-create', e.message);
+  }
+}
 
-    async function createRestServer() {
-      const name = document.getElementById('cf-name').value.trim();
-      const host = document.getElementById('cf-host').value.trim();
-      clearFormError('tl-create');
-      if (!name || !host) return showFormError('tl-create', 'Name and host URL are required.');
-      let headers = {};
-      const headersRaw = document.getElementById('cf-headers').value.trim();
-      if (headersRaw) {
-        try { headers = JSON.parse(headersRaw); }
-        catch { return showFormError('tl-create', 'Headers must be valid JSON, e.g. {"Authorization":"Bearer ..."}'); }
-      }
-      const btn = document.querySelector('#tl-create .form-submit');
-      setBtnLoading(btn, true, 'Create REST server');
-      try {
-        await apiFetch('/mcp-servers/rest-api', {
-          method: 'POST',
-          body: JSON.stringify({ name, description: document.getElementById('cf-desc').value.trim(), host, headers, endpoints: [] })
-        });
-        await loadServers();
-        renderToolsPanel();
-        switchTabById('tl-list');
-      } catch (e) {
-        setBtnLoading(btn, false, 'Create REST server');
-        showFormError('tl-create', e.message);
-      }
-    }
+async function createRestServer() {
+  const name = document.getElementById('cf-name').value.trim();
+  const host = document.getElementById('cf-host').value.trim();
+  clearFormError('tl-create');
+  if (!name || !host) return showFormError('tl-create', 'Name and host URL are required.');
 
-    async function deleteServer(id) {
-      if (!confirm('Delete this server?')) return;
-      try {
-        await apiFetch(`/mcp-servers/${id}`, { method: 'DELETE' });
-        // if deleted server was the active tool, clear it
-        const deleted = servers.find(s => s.id === id);
-        if (deleted && activeTool === deleted.name) clearTool();
-        await loadServers();
-        if (currentPanel === 'tools') renderToolsPanel();
-        else if (currentPanel === 'apps') renderAppsPanel();
-      } catch (e) { alert('Error deleting: ' + e.message); }
-    }
+  function parseJsonField(id, label) {
+    const raw = document.getElementById(id)?.value?.trim();
+    if (!raw) return [null, null];
+    try { return [JSON.parse(raw), null]; }
+    catch { return [null, label + ' must be valid JSON']; }
+  }
 
-    // ── Apps panel ────────────────────────────────────────────────────────
-    function renderAppsPanel() {
-      document.getElementById('panel-title').textContent = 'Apps';
-      document.getElementById('panel-tabs').innerHTML = `
+  const [headers, hErr] = parseJsonField('cf-headers', 'Headers');
+  if (hErr) return showFormError('tl-create', hErr);
+  const [query, qErr] = parseJsonField('cf-query', 'Query params');
+  if (qErr) return showFormError('tl-create', qErr);
+  const [pathParams, ppErr] = parseJsonField('cf-pathparams', 'Path params');
+  if (ppErr) return showFormError('tl-create', ppErr);
+  const [body, bErr] = parseJsonField('cf-body', 'Body');
+  if (bErr) return showFormError('tl-create', bErr);
+
+  const path = document.getElementById('cf-path')?.value?.trim();
+  const method = document.getElementById('cf-method')?.value || 'GET';
+
+  const endpoints = path ? [{
+    path, method,
+    params: query ? Object.entries(query).map(([k,v]) => ({ name: k, value: v, param_type: 'query' })) : [],
+    body: body || null,
+    path_params: pathParams || {},
+  }] : [];
+
+  const btn = document.querySelector('#tl-create .form-submit');
+  setBtnLoading(btn, true, 'Create REST server');
+  try {
+    await apiFetch('/mcp-servers/rest-api', {
+      method: 'POST',
+      body: JSON.stringify({ name, description: document.getElementById('cf-desc').value.trim(), host, headers: headers || {}, endpoints })
+    });
+    await loadServers();
+    renderToolsPanel();
+    switchTabById('tl-list');
+  } catch(e) {
+    setBtnLoading(btn, false, 'Create REST server');
+    showFormError('tl-create', e.message);
+  }
+}
+
+
+async function deleteServer(id) {
+  if (!confirm('Delete this server?')) return;
+  try {
+    await apiFetch(`/mcp-servers/${id}`, { method: 'DELETE' });
+    // if deleted server was the active tool, clear it
+    const deleted = servers.find(s => s.id === id);
+    if (deleted && activeTool === deleted.name) clearTool();
+    await loadServers();
+    if (currentPanel === 'tools') renderToolsPanel();
+    else if (currentPanel === 'apps') renderAppsPanel();
+  } catch(e) { alert('Error deleting: ' + e.message); }
+}
+
+// ── Apps panel ────────────────────────────────────────────────────────
+function renderAppsPanel() {
+  document.getElementById('panel-title').textContent = 'Apps';
+  document.getElementById('panel-tabs').innerHTML = `
     <div class="panel-tab active" data-target="ap-list" onclick="switchTab(this,'ap-list')">Connected</div>
     <div class="panel-tab" data-target="ap-github" onclick="switchTab(this,'ap-github')">GitHub</div>
     <div class="panel-tab" data-target="ap-slack" onclick="switchTab(this,'ap-slack')">Slack</div>
     <div class="panel-tab" data-target="ap-gmail" onclick="switchTab(this,'ap-gmail')">Gmail</div>`;
 
-      const appServers = servers.filter(s => ['github', 'slack', 'gmail'].includes(s.server_type));
+  const appServers = servers.filter(s => ['github','slack','gmail'].includes(s.server_type));
 
-      document.getElementById('panel-body').innerHTML = `
+  document.getElementById('panel-body').innerHTML = `
     <div id="ap-list">
       ${appServers.length ? appServers.map(s => serverCard(s)).join('') : '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">No apps connected yet.</p>'}
     </div>
@@ -2733,72 +2117,72 @@ window.addEventListener('load',function(){_rh();setTimeout(_rh,200);setTimeout(_
       <div class="form-row"><label class="form-label">Refresh Token</label><input class="form-input" type="password" id="gm-rtok" /></div>
       <button class="form-submit" onclick="createGmail()">Connect Gmail</button>
     </div>`;
-    }
+}
 
-    async function createGithub() {
-      const name = document.getElementById('gh-name').value.trim();
-      const token = document.getElementById('gh-token').value.trim();
-      clearFormError('ap-github');
-      if (!name || !token) return showFormError('ap-github', 'Name and token are required.');
-      const btn = document.querySelector('#ap-github .form-submit');
-      setBtnLoading(btn, true, 'Connect GitHub');
-      try {
-        await apiFetch('/mcp-servers/github', {
-          method: 'POST',
-          body: JSON.stringify({ name, personal_access_token: token, description: document.getElementById('gh-desc').value.trim() })
-        });
-        await loadServers(); renderAppsPanel(); switchTabById('ap-list');
-      } catch (e) {
-        setBtnLoading(btn, false, 'Connect GitHub');
-        showFormError('ap-github', e.message);
-      }
-    }
+async function createGithub() {
+  const name  = document.getElementById('gh-name').value.trim();
+  const token = document.getElementById('gh-token').value.trim();
+  clearFormError('ap-github');
+  if (!name || !token) return showFormError('ap-github', 'Name and token are required.');
+  const btn = document.querySelector('#ap-github .form-submit');
+  setBtnLoading(btn, true, 'Connect GitHub');
+  try {
+    await apiFetch('/mcp-servers/github', {
+      method: 'POST',
+      body: JSON.stringify({ name, personal_access_token: token, description: document.getElementById('gh-desc').value.trim() })
+    });
+    await loadServers(); renderAppsPanel(); switchTabById('ap-list');
+  } catch(e) {
+    setBtnLoading(btn, false, 'Connect GitHub');
+    showFormError('ap-github', e.message);
+  }
+}
 
-    async function createSlack() {
-      const name = document.getElementById('sl-name').value.trim();
-      const token = document.getElementById('sl-token').value.trim();
-      clearFormError('ap-slack');
-      if (!name || !token) return showFormError('ap-slack', 'Name and bot token are required.');
-      const btn = document.querySelector('#ap-slack .form-submit');
-      setBtnLoading(btn, true, 'Connect Slack');
-      try {
-        await apiFetch('/mcp-servers/slack', {
-          method: 'POST',
-          body: JSON.stringify({ name, bot_token: token, description: document.getElementById('sl-desc').value.trim() })
-        });
-        await loadServers(); renderAppsPanel(); switchTabById('ap-list');
-      } catch (e) {
-        setBtnLoading(btn, false, 'Connect Slack');
-        showFormError('ap-slack', e.message);
-      }
-    }
+async function createSlack() {
+  const name  = document.getElementById('sl-name').value.trim();
+  const token = document.getElementById('sl-token').value.trim();
+  clearFormError('ap-slack');
+  if (!name || !token) return showFormError('ap-slack', 'Name and bot token are required.');
+  const btn = document.querySelector('#ap-slack .form-submit');
+  setBtnLoading(btn, true, 'Connect Slack');
+  try {
+    await apiFetch('/mcp-servers/slack', {
+      method: 'POST',
+      body: JSON.stringify({ name, bot_token: token, description: document.getElementById('sl-desc').value.trim() })
+    });
+    await loadServers(); renderAppsPanel(); switchTabById('ap-list');
+  } catch(e) {
+    setBtnLoading(btn, false, 'Connect Slack');
+    showFormError('ap-slack', e.message);
+  }
+}
 
-    async function createGmail() {
-      const name = document.getElementById('gm-name').value.trim();
-      const cid = document.getElementById('gm-cid').value.trim();
-      const csec = document.getElementById('gm-csec').value.trim();
-      const rtok = document.getElementById('gm-rtok').value.trim();
-      clearFormError('ap-gmail');
-      if (!name || !cid || !csec || !rtok) return showFormError('ap-gmail', 'All fields are required.');
-      const btn = document.querySelector('#ap-gmail .form-submit');
-      setBtnLoading(btn, true, 'Connect Gmail');
-      try {
-        await apiFetch('/mcp-servers/gmail', {
-          method: 'POST',
-          body: JSON.stringify({ name, client_id: cid, client_secret: csec, refresh_token: rtok })
-        });
-        await loadServers(); renderAppsPanel(); switchTabById('ap-list');
-      } catch (e) {
-        setBtnLoading(btn, false, 'Connect Gmail');
-        showFormError('ap-gmail', e.message);
-      }
-    }
+async function createGmail() {
+  const name = document.getElementById('gm-name').value.trim();
+  const cid  = document.getElementById('gm-cid').value.trim();
+  const csec = document.getElementById('gm-csec').value.trim();
+  const rtok = document.getElementById('gm-rtok').value.trim();
+  clearFormError('ap-gmail');
+  if (!name || !cid || !csec || !rtok) return showFormError('ap-gmail', 'All fields are required.');
+  const btn = document.querySelector('#ap-gmail .form-submit');
+  setBtnLoading(btn, true, 'Connect Gmail');
+  try {
+    await apiFetch('/mcp-servers/gmail', {
+      method: 'POST',
+      body: JSON.stringify({ name, client_id: cid, client_secret: csec, refresh_token: rtok })
+    });
+    await loadServers(); renderAppsPanel(); switchTabById('ap-list');
+  } catch(e) {
+    setBtnLoading(btn, false, 'Connect Gmail');
+    showFormError('ap-gmail', e.message);
+  }
+}
 
-    // ── Settings panel ────────────────────────────────────────────────────
-    function renderSettingsPanel() {
-      document.getElementById('panel-title').textContent = 'Settings';
-      document.getElementById('panel-tabs').innerHTML = '';
-      document.getElementById('panel-body').innerHTML = `
+// ── Settings panel ────────────────────────────────────────────────────
+function renderSettingsPanel() {
+  document.getElementById('panel-title').textContent = 'Settings';
+  document.getElementById('panel-tabs').innerHTML = '';
+  document.getElementById('panel-body').innerHTML = `
     <div class="panel-section-label">Appearance</div>
     <div class="server-card" style="flex-direction:row;align-items:center;justify-content:space-between">
       <span style="font-size:13px">Dark mode</span>
@@ -2817,106 +2201,106 @@ window.addEventListener('load',function(){_rh();setTimeout(_rh,200);setTimeout(_
     <div class="divider"></div>
     <div class="panel-section-label">Danger zone</div>
     <button class="del-btn" style="width:100%;text-align:center" onclick="if(confirm('Clear all chats?')){localStorage.removeItem('mcp_chats');location.reload();}">Clear all chat history</button>`;
-    }
+}
 
-    async function saveApiUrl() {
-      const val = document.getElementById('api-url-input').value.trim();
-      if (!val) return;
-      const btn = document.querySelector('#panel-body .form-submit');
-      setBtnLoading(btn, true, 'Save & reconnect');
-      const status = document.getElementById('api-url-status');
-      status.textContent = 'Testing connection…';
-      status.style.color = 'var(--text-muted)';
-      try {
-        const r = await fetch(val.replace(/\/$/, '') + '/ollama/models');
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        API = val.replace(/\/$/, '');
-        localStorage.setItem('mcp_api_url', API);
-        await loadServers();
-        await loadModels();
-        status.textContent = '✓ Connected successfully';
-        status.style.color = 'var(--success)';
-      } catch (e) {
-        status.textContent = `✗ ${e.message}`;
-        status.style.color = 'var(--danger)';
-      }
-      setBtnLoading(btn, false, 'Save & reconnect');
-    }
+async function saveApiUrl() {
+  const val = document.getElementById('api-url-input').value.trim();
+  if (!val) return;
+  const btn = document.querySelector('#panel-body .form-submit');
+  setBtnLoading(btn, true, 'Save & reconnect');
+  const status = document.getElementById('api-url-status');
+  status.textContent = 'Testing connection…';
+  status.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch(val.replace(/\/$/, '') + '/ollama/models');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    API = val.replace(/\/$/, '');
+    localStorage.setItem('mcp_api_url', API);
+    await loadServers();
+    await loadModels();
+    status.textContent = '✓ Connected successfully';
+    status.style.color = 'var(--success)';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = 'var(--danger)';
+  }
+  setBtnLoading(btn, false, 'Save & reconnect');
+}
 
-    // ── Tab switching ─────────────────────────────────────────────────────
-    function switchTab(el, targetId) {
-      el.closest('.panel').querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('panel-body').querySelectorAll(':scope > [id]').forEach(d => {
-        d.style.display = d.id === targetId ? 'flex' : 'none';
-      });
-    }
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(el, targetId) {
+  el.closest('.panel').querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-body').querySelectorAll(':scope > [id]').forEach(d => {
+    d.style.display = d.id === targetId ? 'flex' : 'none';
+  });
+}
 
-    function switchTabById(targetId) {
-      const tab = document.querySelector(`.panel-tab[data-target="${targetId}"]`);
-      if (tab) switchTab(tab, targetId);
-    }
+function switchTabById(targetId) {
+  const tab = document.querySelector(`.panel-tab[data-target="${targetId}"]`);
+  if (tab) switchTab(tab, targetId);
+}
 
-    // ── Misc ──────────────────────────────────────────────────────────────
-    function scrollToBottom() {
-      const area = document.getElementById('chat-area');
-      area.scrollTop = area.scrollHeight;
-    }
+// ── Misc ──────────────────────────────────────────────────────────────
+function scrollToBottom() {
+  const area = document.getElementById('chat-area');
+  area.scrollTop = area.scrollHeight;
+}
 
-    function handleKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (!document.getElementById('send-btn').disabled) sendMessage();
-      }
-    }
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!document.getElementById('send-btn').disabled) sendMessage();
+  }
+}
 
-    function autoResize(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-    }
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
 
-    function setInput(text) {
-      const el = document.getElementById('chat-input');
-      el.value = text;
-      el.focus();
-      autoResize(el);
-      document.getElementById('send-btn').disabled = false;
-    }
+function setInput(text) {
+  const el = document.getElementById('chat-input');
+  el.value = text;
+  el.focus();
+  autoResize(el);
+  document.getElementById('send-btn').disabled = false;
+}
 
-    function escHtml(s) {
-      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-    // auto-create first chat on load if none
-    window.addEventListener('DOMContentLoaded', () => {
-      if (!chats.length) newChat();
-      else loadChat(chats[chats.length - 1].id);
-    });
+// auto-create first chat on load if none
+window.addEventListener('DOMContentLoaded', () => {
+  if (!chats.length) newChat();
+  else loadChat(chats[chats.length - 1].id);
+});
 
-    // ── Iframe drag-to-resize ─────────────────────────────────────────────
-    function startIframeResize(e, frameId) {
-      e.preventDefault();
-      const frame = document.getElementById(frameId);
-      if (!frame) return;
-      const startY = e.clientY;
-      const startH = frame.offsetHeight;
-      function onMove(ev) {
-        const newH = Math.max(120, Math.min(1200, startH + ev.clientY - startY));
-        frame.style.height = newH + 'px';
-      }
-      function onUp() {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-      }
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    }
+// ── Iframe drag-to-resize ─────────────────────────────────────────────
+function startIframeResize(e, frameId) {
+  e.preventDefault();
+  const frame = document.getElementById(frameId);
+  if (!frame) return;
+  const startY  = e.clientY;
+  const startH  = frame.offsetHeight;
+  function onMove(ev) {
+    const newH = Math.max(120, Math.min(1200, startH + ev.clientY - startY));
+    frame.style.height = newH + 'px';
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
 
-    // ── Lightweight Chart.js-compatible shim ─────────────────────────────
-    // Covers new Chart(el, config) for types: bar, line, pie, doughnut
-    // Renders via Canvas 2D — no external dependencies needed.
-    function getChartShim() {
-      return `
+// ── Lightweight Chart.js-compatible shim ─────────────────────────────
+// Covers new Chart(el, config) for types: bar, line, pie, doughnut
+// Renders via Canvas 2D — no external dependencies needed.
+function getChartShim() {
+  return `
 (function(){
 var COLORS=['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#fb923c','#34d399'];
 function hexA(h,a){var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
@@ -3047,8 +2431,7 @@ window.Chart=function(el,cfg){
 window.Chart.register=function(){};
 })();
 `.trim();
-    }
-  </script>
+}
+</script>
 </body>
-
 </html>

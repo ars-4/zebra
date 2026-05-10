@@ -1,3 +1,7 @@
+"""
+views.py
+"""
+
 import json
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -9,11 +13,10 @@ from .models import (
 )
 from .db import (
     get_db, db_list_servers, db_get_server, db_get_server_by_name,
-    db_create_server, db_update_server, # will use this stupid sometime else
-    db_delete_server,
+    db_create_server, db_update_server, db_delete_server,
 )
 from .utils import (
-    sse_event, sse_error, # Some stuff only want you see dead
+    sse_event, sse_error,
     stream_command_server, stream_rest_server,
     github_call, slack_call, gmail_call,
     ollama_list_models, ollama_chat_stream, ollama_chat_once,
@@ -23,6 +26,10 @@ from .utils import (
 
 router = APIRouter()
 
+
+# ══════════════════════════════════════════════
+# Helpers
+# ══════════════════════════════════════════════
 
 def _sse_response(generator):
     return StreamingResponse(
@@ -45,6 +52,10 @@ async def _get_server_by_name_or_404(db, name: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
     return server
 
+
+# ══════════════════════════════════════════════
+# CRUD
+# ══════════════════════════════════════════════
 
 @router.get("/mcp-servers", tags=["CRUD"])
 async def list_servers(db=Depends(get_db)):
@@ -70,9 +81,13 @@ async def delete_server(server_id: int, db=Depends(get_db)):
     return {"detail": "deleted"}
 
 
+# ══════════════════════════════════════════════
+# Create endpoints
+# ══════════════════════════════════════════════
+
 @router.post("/mcp-servers/command", tags=["Create"])
 async def create_command_server(body: CommandServerCreate, db=Depends(get_db)):
-    config = {"command": body.command, "args": body.args, "env": body.env, "idle_timeout": body.idle_timeout}
+    config = {"command": body.command, "args": body.args, "env": body.env, "one_shot": body.one_shot, "idle_timeout": body.idle_timeout}
     return await db_create_server(db, name=body.name, description=body.description,
                                    server_type="command", config=config,
                                    auto_start=body.auto_start, idle_timeout=body.idle_timeout)
@@ -111,6 +126,10 @@ async def create_gmail_server(body: GmailServerCreate, db=Depends(get_db)):
                                    auto_start=body.auto_start, idle_timeout=body.idle_timeout)
 
 
+# ══════════════════════════════════════════════
+# MCP SSE endpoint
+# ══════════════════════════════════════════════
+
 @router.post("/mcp_servers/{name}/mcp", tags=["MCP SSE"])
 async def mcp_endpoint(name: str, request: Request, db=Depends(get_db)):
     server = await _get_server_by_name_or_404(db, name)
@@ -124,9 +143,14 @@ async def mcp_endpoint(name: str, request: Request, db=Depends(get_db)):
     if stype == "command":
         return _sse_response(stream_command_server(name, config, body.get("payload", body)))
     if stype == "rest_api":
-        return _sse_response(stream_rest_server(config, body.get("endpoint", "/"),
-                                                body.get("method", "GET"),
-                                                body.get("body"), body.get("params")))
+        return _sse_response(stream_rest_server(
+            config,
+            endpoint_path=body.get("endpoint", "/"),
+            method=body.get("method", "GET"),
+            body=body.get("body"),
+            query=body.get("query"),
+            path_params=body.get("path_params", {}),
+        ))
     if stype == "github":
         return _sse_response(github_call(config, body.get("action", "list_repos"), body.get("params", {})))
     if stype == "slack":
@@ -136,6 +160,11 @@ async def mcp_endpoint(name: str, request: Request, db=Depends(get_db)):
 
     raise HTTPException(status_code=400, detail=f"Unknown server type: {stype}")
 
+
+# ══════════════════════════════════════════════
+# Tool call endpoint (non-streaming, returns JSON)
+# Used by the frontend agentic loop
+# ══════════════════════════════════════════════
 
 @router.post("/mcp_servers/{name}/call", tags=["MCP SSE"])
 async def mcp_call(name: str, request: Request, db=Depends(get_db)):
@@ -155,6 +184,7 @@ async def mcp_call(name: str, request: Request, db=Depends(get_db)):
 
     async def collect(gen):
         async for chunk in gen:
+            # chunk is an SSE string like "event: message\ndata: {...}\n\n"
             for line in chunk.split("\n"):
                 if line.startswith("data:"):
                     try:
@@ -165,9 +195,14 @@ async def mcp_call(name: str, request: Request, db=Depends(get_db)):
     if stype == "command":
         await collect(stream_command_server(name, config, body.get("payload", body)))
     elif stype == "rest_api":
-        await collect(stream_rest_server(config, body.get("endpoint", "/"),
-                                         body.get("method", "GET"),
-                                         body.get("body"), body.get("params")))
+        await collect(stream_rest_server(
+            config,
+            endpoint_path=body.get("endpoint", "/"),
+            method=body.get("method", "GET"),
+            body=body.get("body"),
+            query=body.get("query"),
+            path_params=body.get("path_params", {}),
+        ))
     elif stype == "github":
         await collect(github_call(config, body.get("action", "list_repos"), body.get("params", {})))
     elif stype == "slack":
@@ -177,10 +212,14 @@ async def mcp_call(name: str, request: Request, db=Depends(get_db)):
     else:
         raise HTTPException(status_code=400, detail=f"Unknown server type: {stype}")
 
+    # Return all data events merged; filter out status:done
     data_results = [r for r in results if r.get("status") != "done"]
     return {"results": data_results, "tool": name, "server_type": stype}
 
 
+# ══════════════════════════════════════════════
+# Process management
+# ══════════════════════════════════════════════
 
 @router.delete("/mcp_servers/{name}/kill", tags=["Process"])
 async def kill_server_process(name: str, db=Depends(get_db)):
@@ -194,6 +233,10 @@ async def get_running_servers():
     return {"running": list_running_servers()}
 
 
+# ══════════════════════════════════════════════
+# Ollama models
+# ══════════════════════════════════════════════
+
 @router.get("/ollama/models", tags=["Ollama"])
 async def get_ollama_models():
     try:
@@ -202,8 +245,25 @@ async def get_ollama_models():
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Ollama unreachable: {exc}")
 
+
+# ══════════════════════════════════════════════
+# Ollama chat  –  pure LLM, no tool orchestration
+# The agentic tool loop is now handled in the frontend.
+# ══════════════════════════════════════════════
+
 @router.post("/ollama/chat", tags=["Ollama"])
 async def ollama_chat(body: OllamaChatRequest, db=Depends(get_db)):
+    """
+    Plain Ollama chat. The frontend handles the agentic tool-call loop:
+      1. Ask Ollama what action to call  (non-stream)
+      2. Call /mcp_servers/{name}/call   (collects tool result)
+      3. Inject result into history
+      4. Ask Ollama to summarise         (streamed back to user)
+
+    If body.tool is set, a detailed system prompt is injected that tells
+    the model the tool's type and exactly which actions + params to output
+    so the frontend can parse and execute them.
+    """
     messages = [{"role": m.role, "content": m.content} for m in body.chat_history]
     messages.append({"role": "user", "content": body.chat_message})
 

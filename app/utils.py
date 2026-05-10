@@ -1,9 +1,23 @@
+"""
+utils.py
+────────
+All helper logic lives here so views.py stays clean:
+  - Process registry (Type 1 – command servers with idle timeout)
+  - SSE event formatter
+  - MCP tool call dispatcher (Type 1, 2, 3)
+  - Ollama client helpers
+"""
+
 import asyncio
 import json
 import time
 import httpx
 from typing import AsyncGenerator, Optional
 
+
+# ──────────────────────────────────────────────
+# SSE helpers
+# ──────────────────────────────────────────────
 
 def sse_event(data: dict | str, event: str = "message") -> str:
     """Format a single SSE event string."""
@@ -15,6 +29,10 @@ async def sse_error(message: str) -> AsyncGenerator[str, None]:
     yield sse_event({"error": message}, event="error")
 
 
+# ──────────────────────────────────────────────
+# Type 1 – Process registry with idle timeout
+# ──────────────────────────────────────────────
+
 class _ProcessEntry:
     def __init__(self, proc: asyncio.subprocess.Process, idle_timeout: int):
         self.proc = proc
@@ -25,10 +43,13 @@ class _ProcessEntry:
     def touch(self):
         self.last_used = time.monotonic()
 
+
+# name -> _ProcessEntry
 _process_registry: dict[str, _ProcessEntry] = {}
 
 
 async def _idle_watchdog(name: str, entry: _ProcessEntry):
+    """Kill a process after it has been idle for entry.idle_timeout seconds."""
     while True:
         await asyncio.sleep(10)
         idle_for = time.monotonic() - entry.last_used
@@ -39,13 +60,14 @@ async def _idle_watchdog(name: str, entry: _ProcessEntry):
 
 async def get_or_start_process(name: str, command: str, args: list[str],
                                 env: dict[str, str], idle_timeout: int) -> _ProcessEntry:
+    """Return a running process for this server, starting it if needed."""
     if name in _process_registry:
         entry = _process_registry[name]
-        if entry.proc.returncode is None:  
+        if entry.proc.returncode is None:   # still alive
             entry.touch()
             return entry
         else:
-            del _process_registry[name]     
+            del _process_registry[name]     # stale – restart
 
     import os
     merged_env = {**os.environ, **env}
@@ -70,6 +92,7 @@ async def kill_command_server(name: str):
             await asyncio.wait_for(entry.proc.wait(), timeout=5)
         except asyncio.TimeoutError:
             entry.proc.kill()
+    # cancel watchdog
     if entry and entry._watchdog:
         entry._watchdog.cancel()
 
@@ -78,8 +101,61 @@ def list_running_servers() -> list[str]:
     return [n for n, e in _process_registry.items() if e.proc.returncode is None]
 
 
+# ──────────────────────────────────────────────
+# Type 1 – send a JSON-RPC style message and yield SSE
+# ──────────────────────────────────────────────
+
 async def stream_command_server(name: str, config: dict,
                                  payload: dict) -> AsyncGenerator[str, None]:
+    """Dispatch to one-shot or keep-alive mode based on config."""
+    if config.get("one_shot", True):
+        async for chunk in _run_oneshot(config, payload):
+            yield chunk
+    else:
+        async for chunk in _run_keepalive(name, config, payload):
+            yield chunk
+
+
+async def _run_oneshot(config: dict, payload: dict) -> AsyncGenerator[str, None]:
+    """Run command once, stream stdout line by line, process exits when done."""
+    import os
+    merged_env = {**os.environ, **config.get("env", {})}
+    args = payload.get("args", config.get("args", []))
+    stdin_data = payload.get("stdin")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config["command"], *args,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            env=merged_env,
+        )
+        stdout, _ = await asyncio.wait_for(
+            proc.communicate(stdin_data.encode() if stdin_data else None),
+            timeout=60,
+        )
+        for raw_line in stdout.decode(errors="replace").splitlines():
+            line = raw_line.rstrip()
+            if not line:
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError:
+                parsed = {"output": line}
+            yield sse_event(parsed)
+        yield sse_event({"exit_code": proc.returncode, "status": "done"}, event="done")
+    except asyncio.TimeoutError:
+        async for chunk in sse_error("Command timed out after 60s"):
+            yield chunk
+    except Exception as exc:
+        async for chunk in sse_error(f"Failed to run command: {exc}"):
+            yield chunk
+
+
+async def _run_keepalive(name: str, config: dict,
+                          payload: dict) -> AsyncGenerator[str, None]:
+    """Start/reuse a long-running process, write JSON line, read until blank line."""
     try:
         entry = await get_or_start_process(
             name=name,
@@ -98,6 +174,7 @@ async def stream_command_server(name: str, config: dict,
         entry.proc.stdin.write(line.encode())
         await entry.proc.stdin.drain()
         entry.touch()
+
         assert entry.proc.stdout is not None
         async for raw in entry.proc.stdout:
             entry.touch()
@@ -114,11 +191,24 @@ async def stream_command_server(name: str, config: dict,
         async for chunk in sse_error(str(exc)):
             yield chunk
 
+
+# ──────────────────────────────────────────────
+# Type 2 – REST API bridge → SSE
+# ──────────────────────────────────────────────
+
 async def stream_rest_server(config: dict, endpoint_path: str,
                               method: str, body: Optional[dict] = None,
-                              params: Optional[dict] = None) -> AsyncGenerator[str, None]:
+                              query: Optional[dict] = None,
+                              path_params: Optional[dict] = None) -> AsyncGenerator[str, None]:
+    """Call a REST endpoint and stream the response as SSE."""
     base = config["host"].rstrip("/")
-    url = f"{base}{endpoint_path}"
+
+    # Substitute path params: /users/{id} + {"id":"42"} → /users/42
+    path = endpoint_path
+    for k, v in (path_params or {}).items():
+        path = path.replace(f"{{{k}}}", str(v))
+
+    url = f"{base}{path}"
     headers = config.get("headers", {})
 
     try:
@@ -127,8 +217,8 @@ async def stream_rest_server(config: dict, endpoint_path: str,
                 method=method.upper(),
                 url=url,
                 headers=headers,
-                params=params,
-                json=body,
+                params=query or {},
+                json=body if method.upper() in ("POST", "PUT", "PATCH") else None,
             )
             try:
                 data = resp.json()
@@ -141,11 +231,21 @@ async def stream_rest_server(config: dict, endpoint_path: str,
         async for chunk in sse_error(str(exc)):
             yield chunk
 
+
+# ──────────────────────────────────────────────
+# Type 3 – GitHub
+# ──────────────────────────────────────────────
+
 GITHUB_API = "https://api.github.com"
 
 
 async def github_call(config: dict, action: str,
                        params: dict) -> AsyncGenerator[str, None]:
+    """
+    Supported actions: list_repos, get_repo, list_issues, get_issue,
+                       list_prs, get_pr, list_branches
+    params: { owner, repo, number, per_page, page, ... }
+    """
     token = config["personal_access_token"]
     headers = {
         "Authorization": f"Bearer {token}",
@@ -192,11 +292,20 @@ async def github_call(config: dict, action: str,
             yield chunk
 
 
+# ──────────────────────────────────────────────
+# Type 3 – Slack
+# ──────────────────────────────────────────────
+
 SLACK_API = "https://slack.com/api"
 
 
 async def slack_call(config: dict, action: str,
                       params: dict) -> AsyncGenerator[str, None]:
+    """
+    Supported actions: list_channels, post_message, get_messages,
+                       get_user, list_users
+    params: { channel, text, limit, user, ... }
+    """
     token = config["bot_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -237,11 +346,16 @@ async def slack_call(config: dict, action: str,
             yield chunk
 
 
+# ──────────────────────────────────────────────
+# Type 3 – Gmail (OAuth2)
+# ──────────────────────────────────────────────
+
 GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 
 async def _gmail_access_token(config: dict) -> str:
+    """Exchange refresh_token for a short-lived access token."""
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(GMAIL_TOKEN_URL, data={
             "client_id":     config["client_id"],
@@ -255,12 +369,17 @@ async def _gmail_access_token(config: dict) -> str:
 
 async def gmail_call(config: dict, action: str,
                       params: dict) -> AsyncGenerator[str, None]:
+    """
+    Supported actions: list_messages, get_message, send_message,
+                       list_labels, get_profile
+    params: { message_id, query, max_results, to, subject, body, ... }
+    """
     action_map = {
         "list_messages": ("GET",  "/messages"),
         "get_message":   ("GET",  "/messages/{message_id}"),
         "send_message":  ("POST", "/messages/send"),
         "list_labels":   ("GET",  "/labels"),
-        "get_profile":   ("GET",  ""),     
+        "get_profile":   ("GET",  ""),          # /users/me
     }
 
     if action not in action_map:
@@ -289,6 +408,7 @@ async def gmail_call(config: dict, action: str,
     url = GMAIL_API + path
     body = None
 
+    # Build RFC-2822 raw message for send_message
     if action == "send_message":
         import base64, email.mime.text
         msg = email.mime.text.MIMEText(params.get("body", ""))
@@ -312,7 +432,12 @@ async def gmail_call(config: dict, action: str,
             yield chunk
 
 
+# ──────────────────────────────────────────────
+# Ollama helpers
+# ──────────────────────────────────────────────
+
 OLLAMA_BASE = "http://localhost:11434"
+
 
 async def ollama_list_models() -> list[str]:
     async with httpx.AsyncClient(timeout=10) as client:
@@ -324,6 +449,7 @@ async def ollama_list_models() -> list[str]:
 async def ollama_chat_stream(model: str, messages: list[dict],
                               tool_context: Optional[str] = None
                               ) -> AsyncGenerator[str, None]:
+    """Stream Ollama chat response as SSE. Optionally injects tool_context."""
     if tool_context:
         messages = [{"role": "system", "content": tool_context}] + messages
 
@@ -351,6 +477,7 @@ async def ollama_chat_stream(model: str, messages: list[dict],
 
 async def ollama_chat_once(model: str, messages: list[dict],
                             tool_context: Optional[str] = None) -> dict:
+    """Non-streaming Ollama call. Returns the full message dict."""
     if tool_context:
         messages = [{"role": "system", "content": tool_context}] + messages
 
